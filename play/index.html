@@ -1,1867 +1,2764 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>오리가 되어서 세상을 구하는 게임 - Stage 1</title>
-    <style>
-        /* 기본 스타일 초기화 및 화면 중앙 배치 */
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            user-select: none;
-        }
-        body {
-            background-color: #1a1a1a;
-            color: #ffffff;
-            font-family: 'Courier New', Courier, monospace;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            overflow: hidden;
-        }
-        #game-container {
-            position: relative;
-            width: 100%;
-            max-width: 1000px;
-            aspect-ratio: 10 / 7;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
-            border-radius: 12px;
-            overflow: hidden;
-        }
-        canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-            background-color: #8bc34a; /* 연두색 잔디 바탕색 */
-            cursor: crosshair;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>TTACHI: 오리가 되어서 세상을 구하는 게임</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      touch-action: none;
+    }
 
-        /* UI 오버레이 (시작 화면, 결과 화면) */
-        .overlay-screen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #000000;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            padding: 20px;
-            z-index: 10;
-            cursor: pointer;
-            transition: opacity 0.5s ease;
-        }
-        .hidden {
-            display: none !important;
-        }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #05070a;
+      color: #f0f0f0;
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Malgun Gothic', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
 
-        /* 웅장한 TTACHI 로고 타이틀 스타일 */
-        .title-wrapper {
-            position: relative;
-            margin-bottom: 25px;
-        }
-        .main-title {
-            font-family: 'Courier New', Courier, monospace;
-            font-size: clamp(3rem, 8vw, 5rem);
-            font-weight: 900;
-            color: #ffffff;
-            letter-spacing: 12px;
-            text-transform: uppercase;
-            text-shadow: 6px 6px 0 #000, 12px 12px 0 #444;
-            position: relative;
-            display: inline-block;
-        }
-        .title-star {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: clamp(2.5rem, 6vw, 4rem);
-            color: #fff5cc;
-            text-shadow: 0 0 25px #ffd700, 0 0 50px #ff9900;
-            pointer-events: none;
-            opacity: 0.9;
-        }
-        .sub-title-prompt {
-            font-size: clamp(1rem, 2.5vw, 1.3rem);
-            color: #e0e0e0;
-            letter-spacing: 2px;
-            margin-top: 20px;
-            animation: pulseText 1.5s infinite ease-in-out;
-        }
-        @keyframes pulseText {
-            0%, 100% { opacity: 0.3; transform: scale(0.98); }
-            50% { opacity: 1; transform: scale(1.02); color: #ffffff; }
-        }
+    /* 10:7 고정 종횡비 반응형 컨테이너 */
+    #game-wrapper {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      max-width: calc(100vh * 10 / 7);
+      max-height: calc(100vw * 7 / 10);
+      aspect-ratio: 10 / 7;
+      box-shadow: 0 12px 48px rgba(0, 0, 0, 0.9), 0 0 30px rgba(50, 160, 80, 0.25);
+      background: #111;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
 
-        /* 다크소울 스타일 결과창 연출 */
-        .ds-title {
-            font-family: 'Courier New', Courier, monospace;
-            font-size: clamp(2.5rem, 7vw, 4.5rem);
-            font-weight: bold;
-            letter-spacing: 15px;
-            opacity: 0;
-            animation: dsFadeIn 3s ease-out forwards;
-            margin-bottom: 20px;
-            text-align: center;
-            white-space: nowrap;
-        }
-        @keyframes dsFadeIn {
-            0% { opacity: 0; transform: scale(0.9); }
-            30% { opacity: 1; }
-            100% { opacity: 1; transform: scale(1); }
-        }
-        .ds-died {
-            color: #990000;
-            text-shadow: 0 0 10px rgba(0, 0, 0, 0.8), 0 0 20px rgba(153, 0, 0, 0.4);
-        }
-        .ds-cleared {
-            color: #e6b800;
-            text-shadow: 0 0 10px rgba(0, 0, 0, 0.8), 0 0 20px rgba(230, 184, 0, 0.4);
-        }
-        .fade-in-delayed {
-            opacity: 0;
-            animation: textFadeIn 2s ease-out forwards;
-            animation-delay: 2s;
-        }
-        @keyframes textFadeIn {
-            to { opacity: 1; }
-        }
-    </style>
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: #4a752c;
+      cursor: crosshair;
+    }
+
+    /* 상단 제어 바 */
+    .top-bar-btn {
+      background: rgba(15, 20, 25, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #eee;
+      cursor: pointer;
+      backdrop-filter: blur(6px);
+      transition: all 0.2s ease;
+      z-index: 40;
+    }
+    .top-bar-btn:active, .top-bar-btn:hover {
+      background: rgba(35, 45, 55, 0.95);
+      border-color: #64b5f6;
+    }
+
+    #audio-toggle {
+      position: absolute;
+      top: 10px;
+      left: 12px;
+    }
+
+    #fullscreen-toggle {
+      position: absolute;
+      top: 10px;
+      left: 135px;
+    }
+
+    /* 우상단 치트 가이드 & 모바일 치트 버튼 */
+    #cheat-container {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+      z-index: 40;
+    }
+
+    #cheat-guide {
+      background: rgba(15, 20, 25, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-size: 11px;
+      color: #bbb;
+      pointer-events: none;
+      backdrop-filter: blur(6px);
+      line-height: 1.3;
+      text-align: right;
+    }
+    #cheat-guide span {
+      color: #ffca28;
+      font-weight: bold;
+    }
+
+    #mobile-cheat-bar {
+      display: flex;
+      gap: 6px;
+    }
+    .cheat-btn {
+      background: rgba(30, 40, 50, 0.85);
+      border: 1px solid rgba(255, 202, 40, 0.5);
+      color: #ffca28;
+      font-size: 11px;
+      font-weight: bold;
+      padding: 4px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .cheat-btn:active {
+      background: #ffca28;
+      color: #111;
+    }
+
+    /* 페이즈 알림 배너 */
+    #phase-banner {
+      position: absolute;
+      top: 22%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.9);
+      font-size: 44px;
+      font-weight: 900;
+      letter-spacing: 5px;
+      color: #ff3b30;
+      text-shadow: 0 0 25px rgba(255, 60, 60, 0.9), 0 4px 12px black;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 35;
+      white-space: nowrap;
+    }
+
+    /* ==========================================
+       모바일 온스크린 가상 컨트롤러 (Touch UI)
+       ========================================== */
+    #mobile-controls {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 30;
+      display: block;
+    }
+
+    /* 가상 조이스틱 영역 (좌측 하단) */
+    #joystick-zone {
+      position: absolute;
+      bottom: 25px;
+      left: 25px;
+      width: 130px;
+      height: 130px;
+      pointer-events: auto;
+    }
+
+    #joystick-base {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.12);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      backdrop-filter: blur(4px);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+    }
+
+    #joystick-knob {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 54px;
+      height: 54px;
+      margin-top: -27px;
+      margin-left: -27px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #64b5f6, #1976d2);
+      border: 2px solid rgba(255, 255, 255, 0.6);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+      transform: translate(0px, 0px);
+      transition: transform 0.05s ease-out;
+    }
+
+    /* 액션 버튼 영역 (우측 하단) */
+    #action-zone {
+      position: absolute;
+      bottom: 25px;
+      right: 25px;
+      width: 160px;
+      height: 160px;
+      pointer-events: auto;
+    }
+
+    /* 공격 버튼 (크고 강조) */
+    #btn-attack {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      width: 76px;
+      height: 76px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #ff7043, #d84315);
+      border: 2.5px solid rgba(255, 255, 255, 0.8);
+      box-shadow: 0 4px 16px rgba(216, 67, 21, 0.5);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: #fff;
+      font-weight: 900;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    #btn-attack:active {
+      transform: scale(0.92);
+      background: radial-gradient(circle at 35% 35%, #ff5722, #bf360c);
+    }
+    #btn-attack span {
+      font-size: 18px;
+      margin-bottom: 2px;
+    }
+
+    /* 대쉬 회피 버튼 */
+    #btn-dash {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      width: 62px;
+      height: 62px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #42a5f5, #1565c0);
+      border: 2px solid rgba(255, 255, 255, 0.7);
+      box-shadow: 0 4px 14px rgba(21, 101, 192, 0.5);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: #fff;
+      font-weight: 800;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    #btn-dash:active {
+      transform: scale(0.92);
+      background: radial-gradient(circle at 35% 35%, #1e88e5, #0d47a1);
+    }
+    #btn-dash span {
+      font-size: 16px;
+    }
+    #btn-dash.cooldown {
+      opacity: 0.45;
+      filter: grayscale(0.7);
+    }
+
+    /* 세로 화면 안내 (Portrait Warning) */
+    #rotate-prompt {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: #080c12;
+      z-index: 100;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: #fff;
+      text-align: center;
+      padding: 20px;
+    }
+    #rotate-prompt .icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      animation: rotate-anim 2s infinite ease-in-out;
+    }
+    @keyframes rotate-anim {
+      0%, 100% { transform: rotate(0deg); }
+      50% { transform: rotate(90deg); }
+    }
+    @media (orientation: portrait) and (max-width: 768px) {
+      #rotate-prompt {
+        display: flex;
+      }
+    }
+  </style>
 </head>
 <body>
 
-<div id="game-container">
-    <canvas id="gameCanvas" width="1000" height="700"></canvas>
+<!-- 세로 모드 회전 권장 안내 -->
+<div id="rotate-prompt">
+  <div class="icon">🔄</div>
+  <h2 style="font-size: 22px; margin-bottom: 8px;">화면을 가로로 돌려주세요!</h2>
+  <p style="color: #aaa; font-size: 14px;">TTACHI는 가로 모드(Landscape)에 최적화되어 있습니다.</p>
+</div>
 
-    <!-- 1. 시작 화면 (시네마틱 TTACHI 타이틀) -->
-    <div id="start-screen" class="overlay-screen">
-        <div class="title-wrapper">
-            <div class="main-title">TTACHI</div>
-            <div class="title-star">✦</div>
-        </div>
-        <div class="sub-title-prompt">[ 아무 버튼이나 누르거나 클릭해서 시작하기 ]</div>
+<div id="game-wrapper">
+  <!-- 상단 컨트롤 버튼 -->
+  <button id="audio-toggle" class="top-bar-btn">🔊 BGM/SFX 켜짐</button>
+  <button id="fullscreen-toggle" class="top-bar-btn">⛶ 전체화면</button>
+
+  <div id="cheat-container">
+    <div id="cheat-guide">
+      치트: <span>Ctrl+Shift+1/2/3</span>
+    </div>
+    <!-- 모바일 원터치 치트 버튼 -->
+    <div id="mobile-cheat-bar">
+      <button class="cheat-btn" onclick="game.boss.setPhaseCheat(1)">P1</button>
+      <button class="cheat-btn" onclick="game.boss.setPhaseCheat(2)">P2</button>
+      <button class="cheat-btn" onclick="game.boss.setPhaseCheat(3)">P3</button>
+    </div>
+  </div>
+
+  <div id="phase-banner">3페이즈 돌입!</div>
+
+  <canvas id="gameCanvas" width="1000" height="700"></canvas>
+
+  <!-- 모바일 온스크린 터치 컨트롤러 -->
+  <div id="mobile-controls">
+    <!-- 좌측 하단 가상 조이스틱 -->
+    <div id="joystick-zone">
+      <div id="joystick-base">
+        <div id="joystick-knob"></div>
+      </div>
     </div>
 
-    <!-- 2. 결과 화면 (다크소울 스타일 연출) -->
-    <div id="result-screen" class="overlay-screen hidden">
-        <div id="result-title" class="ds-title"></div>
-        <div id="result-prompt-wrapper" class="fade-in-delayed">
-            <div id="result-prompt" class="sub-title-prompt"></div>
-        </div>
+    <!-- 우측 하단 액션 버튼들 -->
+    <div id="action-zone">
+      <div id="btn-dash">
+        <span>💨</span>대쉬
+      </div>
+      <div id="btn-attack">
+        <span>🎯</span>사용
+      </div>
     </div>
+  </div>
 </div>
 
 <script>
+/**
+ * TTACHI: 오리가 되어서 세상을 구하는 게임
+ * 완전 규격 구현 HTML5 캔버스 보스 러시 액션 게임 (PC & 모바일 완벽 대응 단일 HTML)
+ */
+
 // ==========================================
-// 1. 게임 설정값
+// 1. 오디오 신디사이저 (Web Audio API)
 // ==========================================
-const CONFIG = {
-    // 플레이어(오리) 설정
-    PLAYER_SPEED: 4.2,
-    PLAYER_RADIUS: 20,
-    PLAYER_STUN_DURATION: 750,  // 닭/충격파 피격 시 0.75초 기절
-    PLAYER_DASH_SPEED: 13.5,    // Shift 대쉬 속도
-    PLAYER_DASH_DURATION: 160,  // 대쉬 지속 시간 (0.16초)
-    PLAYER_DASH_COOLDOWN: 1000, // 대쉬 쿨타임 (1초)
+class SoundFX {
+  constructor() {
+    this.ctx = null;
+    this.muted = false;
+    this.bgmTimer = null;
+    this.curPhase = 1;
+    this.isPlayingBgm = false;
+  }
 
-    // 소(보스) 설정
-    COW_MAX_HP: 375,            // 돌멩이 15대 (25 * 15)
-    COW_PHASE2_HP: 300,         // 체력 20% 감소 시(80% 이하) 2페이즈 진입
-    COW_PHASE3_HP: 187.5,       // 체력 50% 이하 시 3페이즈 진입
-    COW_RADIUS: 28,
-    COW_WALK_SPEED: 1.6,
-    COW_DASH_SPEED: 10.5,
-    COW_CHAIN_DASH_MULTIPLIER: 1.8, // 무지성 연쇄 돌진 속도 배율
-    COW_PRE_DASH_TIME: 800,     // 돌진 전 덜덜 떠는 시간 (0.8초)
-    COW_WALL_STUN_TIME: 1000,   // 바위/벽 충돌 시 기절 시간 (1초)
-    COW_END_WAIT_TIME: 250,     // 돌진 정상 종료 시 대기 시간 (0.25초)
-    COW_CHICKEN_WAIT_TIME: 1500,// 닭 소환 후 대기 시간 (1.5초)
-    COW_P1_COOLDOWN: 2600,      // 1페이즈 패턴 쿨타임
-    COW_P2_COOLDOWN: 1400,      // 2/3페이즈 패턴 쿨타임
-    COW_NORMAL_BOUNCES: 3,      // 2/3페이즈 일반 돌진 벽 반사 횟수
-    COW_CHAIN_MAX_BOUNCES: 8,   // 2/3페이즈 무지성 연쇄 돌진 최대 튕김 횟수
-    COW_JUMP_DURATION: 750,     // 3페이즈 점프 체공 시간 (0.75초)
-    COW_JUMP_RECOVERY: 1000,    // 점프 착지 후 대기 시간 (1초)
-    COW_DUST_DASH_MULTIPLIER: 2,// 먼지 구름 돌진 거리 배율 (2배)
-    DUST_CLOUD_DURATION: 2000,  // 모래/먼지 구름 지속 시간 (2초)
-    COW_HEAL_DURATION: 2500,    // 자가 회복 기절 시간 (2.5초)
-    COW_HEAL_RATIO: 0.05,       // 자가 회복량 (최대 체력의 5%)
-    SHOCKWAVE_SPEED: 6.5,       // 충격파 확산 속도
-    SHOCKWAVE_MAX_RADIUS: 440,  // 충격파 최대 반경
+  init() {
+    if (!this.ctx) {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      this.ctx = new AudioContext();
+    }
+    if (this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
+  }
 
-    // 닭 소환수 설정
-    MAX_CHICKENS: 9,
-    CHICKEN_RADIUS: 15,
-    CHICKEN_SPEED: 2.3,
-    RED_CHICKEN_SPEED: 3.1,
+  toggleMute() {
+    this.muted = !this.muted;
+    if (this.muted) {
+      this.stopBGM();
+    } else {
+      if (game.gameState === 'PLAYING') {
+        this.startBGM(this.curPhase);
+      }
+    }
+    return !this.muted;
+  }
 
-    // 투사체 및 아이템 설정
-    STONE_DAMAGE: 25,
-    STONE_SPEED: 11,
-    STONE_RADIUS: 10,
-    SLINGSHOT_DAMAGE: 25 / 3,   // 새총 데미지 (짱돌의 1/3)
-    SLINGSHOT_COOLDOWN: 500,    // 새총 발사 쿨타임 (0.5초)
-    SLINGSHOT_SPEED: 14,
-    SLINGSHOT_RADIUS: 6,
-    ROPE_SPEED: 17,             // 밧줄 발사 속도
-    ROPE_MAX_DIST: 440,         // 밧줄 최대 사거리
-    ROPE_ORBIT_DURATION: 3000,  // 밧줄 회전 지속 시간 (3초)
-    ROPE_ORBIT_SPEED: 0.08,     // 밧줄 회전 각속도
-    ROPE_COOLDOWN: 500,         // 밧줄 재사용 대기시간 (0.5초)
-    DROP_STONE_RADIUS: 11,
-    PICKUP_RANGE: 38,
+  playTone(freq, type, duration, startVol = 0.2, endVol = 0.001) {
+    if (this.muted || !this.ctx) return;
+    try {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      const now = this.ctx.currentTime;
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, now);
+      gain.gain.setValueAtTime(startVol, now);
+      gain.gain.exponentialRampToValueAtTime(endVol, now + duration);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + duration);
+    } catch(e) {}
+  }
 
-    // 연출 설정
-    BOSS_INTRO_DURATION: 3000   // 보스 등장 3초 연출
+  // 떼치! 타격음
+  playTtachi() {
+    if (this.muted || !this.ctx) return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(280, now);
+    osc.frequency.exponentialRampToValueAtTime(70, now + 0.12);
+    gain.gain.setValueAtTime(0.35, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.12);
+  }
+
+  // 대쉬 소리
+  playDash() {
+    if (this.muted || !this.ctx) return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(500, now);
+    osc.frequency.exponentialRampToValueAtTime(160, now + 0.14);
+    gain.gain.setValueAtTime(0.25, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.14);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.14);
+  }
+
+  // 돌진 예고 경고음
+  playWarning() {
+    this.playTone(880, 'square', 0.08, 0.18, 0.01);
+  }
+
+  // 바위 충돌 / 파괴음 ("와장창!")
+  playCrash(broken = false) {
+    if (this.muted || !this.ctx) return;
+    const now = this.ctx.currentTime;
+    const bufferSize = Math.floor(this.ctx.sampleRate * (broken ? 0.35 : 0.18));
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buffer;
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(broken ? 450 : 260, now);
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(broken ? 0.5 : 0.35, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + (broken ? 0.35 : 0.18));
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.ctx.destination);
+    noise.start(now);
+  }
+
+  // 착지 충격파 ("쿵!")
+  playThud() {
+    if (this.muted || !this.ctx) return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(150, now);
+    osc.frequency.exponentialRampToValueAtTime(32, now + 0.45);
+    gain.gain.setValueAtTime(0.55, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.45);
+  }
+
+  playRope() {
+    this.playTone(520, 'sawtooth', 0.12, 0.22, 0.01);
+  }
+
+  playSling() {
+    this.playTone(720, 'triangle', 0.08, 0.25, 0.01);
+  }
+
+  playChicken() {
+    this.playTone(620, 'square', 0.09, 0.14, 0.01);
+  }
+
+  playDeath() {
+    if (this.muted || !this.ctx) return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(110, now);
+    osc.frequency.exponentialRampToValueAtTime(36, now + 2.0);
+    gain.gain.setValueAtTime(0.45, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 2.0);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 2.0);
+  }
+
+  playVictory() {
+    const notes = [261.6, 329.6, 392.0, 523.25];
+    notes.forEach((freq, idx) => {
+      setTimeout(() => {
+        this.playTone(freq, 'triangle', 0.45, 0.25, 0.02);
+      }, idx * 160);
+    });
+  }
+
+  startBGM(phase = 1) {
+    if (this.muted || !this.ctx) return;
+    this.stopBGM();
+    this.curPhase = phase;
+    this.isPlayingBgm = true;
+
+    let step = 0;
+    const tempo = phase === 1 ? 250 : (phase === 2 ? 180 : 135);
+    const bassline1 = [65.4, 65.4, 77.8, 87.3, 65.4, 98.0, 87.3, 77.8];
+    const bassline2 = [82.4, 82.4, 98.0, 110.0, 82.4, 123.5, 110.0, 98.0];
+    const bassline3 = [55.0, 82.4, 110.0, 130.8, 146.8, 130.8, 110.0, 82.4];
+
+    this.bgmTimer = setInterval(() => {
+      if (!this.isPlayingBgm || this.muted || !this.ctx) return;
+      const pattern = this.curPhase === 1 ? bassline1 : (this.curPhase === 2 ? bassline2 : bassline3);
+      const freq = pattern[step % pattern.length];
+      const now = this.ctx.currentTime;
+
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = this.curPhase === 3 ? 'sawtooth' : 'triangle';
+      osc.frequency.setValueAtTime(freq, now);
+
+      gain.gain.setValueAtTime(this.curPhase === 3 ? 0.09 : 0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.005, now + (tempo / 1000) * 0.88);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + (tempo / 1000) * 0.88);
+
+      step++;
+    }, tempo);
+  }
+
+  stopBGM() {
+    this.isPlayingBgm = false;
+    if (this.bgmTimer) {
+      clearInterval(this.bgmTimer);
+      this.bgmTimer = null;
+    }
+  }
+}
+
+const audio = new SoundFX();
+
+// 상단 버튼 제어
+const audioToggleBtn = document.getElementById('audio-toggle');
+audioToggleBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  audio.init();
+  const enabled = audio.toggleMute();
+  audioToggleBtn.textContent = enabled ? '🔊 BGM/SFX 켜짐' : '🔇 음소거 상태';
+});
+
+const fullscreenBtn = document.getElementById('fullscreen-toggle');
+fullscreenBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(() => {});
+    fullscreenBtn.textContent = '❌ 전체화면 해제';
+  } else {
+    document.exitFullscreen().catch(() => {});
+    fullscreenBtn.textContent = '⛶ 전체화면';
+  }
+});
+
+// ==========================================
+// 2. 수학 및 유틸리티
+// ==========================================
+const V = {
+  dist: (x1, y1, x2, y2) => Math.hypot(x2 - x1, y2 - y1),
+  normalize: (x, y) => {
+    const len = Math.hypot(x, y);
+    return len === 0 ? { x: 0, y: 0 } : { x: x / len, y: y / len };
+  },
+  clamp: (v, min, max) => Math.max(min, Math.min(max, v)),
+  lerp: (a, b, t) => a + (b - a) * t,
+  reflect: (vx, vy, nx, ny) => {
+    const dot = vx * nx + vy * ny;
+    return { x: vx - 2 * dot * nx, y: vy - 2 * dot * ny };
+  }
 };
 
-// ==========================================
-// 2. DOM 요소 및 전역 상태 변수
-// ==========================================
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-const startScreen = document.getElementById('start-screen');
-const resultScreen = document.getElementById('result-screen');
-const resultTitle = document.getElementById('result-title');
-const resultPrompt = document.getElementById('result-prompt');
-const resultPromptWrapper = document.getElementById('result-prompt-wrapper');
+const CW = 1000;
+const CH = 700;
 
-// 게임 상태: 'START' | 'BOSS_INTRO' | 'PLAYING' | 'GAMEOVER' | 'CLEAR'
-let gameState = 'START';
-let stateTimer = 0;
-let bossIntroStartTime = 0;
-
-// 입력 상태
-const keys = {};
-const pressedCodes = new Set();
-const mouse = { x: canvas.width / 2, y: canvas.height / 2 };
-
-// 엔티티
-let player = null;
-let cow = null;
-let rocks = [];
-let playerTrails = [];
-let droppedStones = [];
-let projectiles = [];
-let chickens = [];
-let shockwaves = [];
-let dustClouds = [];
-let droppedRope = null;
-let activeRope = null;
-let slingshotCooldownEnd = 0;
-let ropeCooldownEnd = 0;
-let floatingTexts = [];
-let inventory = [null, null, null, null];
-let selectedSlot = 0;
+// 바위 5개 고정 위치 (기획서 명시)
+const ROCK_COORDS = [
+  { x: 200, y: 180 }, // 좌상
+  { x: 800, y: 180 }, // 우상
+  { x: 500, y: 350 }, // 중앙
+  { x: 200, y: 520 }, // 좌하
+  { x: 800, y: 520 }  // 우하
+];
 
 // ==========================================
-// 3. 유틸리티 함수
+// 3. 파티클 및 플로팅 텍스트
 // ==========================================
-function dist(x1, y1, x2, y2) {
-    return Math.hypot(x2 - x1, y2 - y1);
+class FloatingText {
+  constructor(text, x, y, color = '#ffeb3b', size = 20, lifetime = 0.85) {
+    this.text = text;
+    this.x = x;
+    this.y = y;
+    this.color = color;
+    this.size = size;
+    this.lifetime = lifetime;
+    this.maxLifetime = lifetime;
+    this.vy = -45;
+  }
+  update(dt) {
+    this.lifetime -= dt;
+    this.y += this.vy * dt;
+  }
+  draw(ctx) {
+    const alpha = Math.max(0, this.lifetime / this.maxLifetime);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.font = `bold ${this.size}px 'Pretendard', sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = this.color;
+    ctx.shadowColor = 'black';
+    ctx.shadowBlur = 6;
+    ctx.fillText(this.text, this.x, this.y);
+    ctx.restore();
+  }
 }
 
-function spawnFloatingText(x, y, text, color = '#ffffff') {
-    floatingTexts.push({
-        x,
-        y,
-        text,
-        color,
-        alpha: 1,
-        vy: -1.4
-    });
+class Particle {
+  constructor(x, y, vx, vy, color, radius, lifetime, shape = 'circle') {
+    this.x = x;
+    this.y = y;
+    this.vx = vx;
+    this.vy = vy;
+    this.color = color;
+    this.radius = radius;
+    this.lifetime = lifetime;
+    this.maxLifetime = lifetime;
+    this.shape = shape;
+    this.rot = Math.random() * Math.PI * 2;
+    this.vRot = (Math.random() - 0.5) * 8;
+  }
+  update(dt) {
+    this.lifetime -= dt;
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
+    this.rot += this.vRot * dt;
+  }
+  draw(ctx) {
+    const alpha = Math.max(0, this.lifetime / this.maxLifetime);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = this.color;
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.rot);
+    if (this.shape === 'circle') {
+      ctx.beginPath();
+      ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (this.shape === 'rect') {
+      ctx.fillRect(-this.radius, -this.radius, this.radius * 2, this.radius * 2);
+    } else if (this.shape === 'feather') {
+      ctx.beginPath();
+      ctx.ellipse(0, 0, this.radius * 2, this.radius, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
 }
 
-// 바위와의 원형 충돌 밀어내기
-function resolveRockCollisions(entity) {
-    for (let i = 0; i < rocks.length; i++) {
-        const r = rocks[i];
-        const dx = entity.x - r.x;
-        const dy = entity.y - r.y;
-        const d = Math.hypot(dx, dy);
-        const minDist = entity.radius + r.radius;
-        if (d < minDist && d > 0) {
-            const overlap = minDist - d;
-            entity.x += (dx / d) * overlap;
-            entity.y += (dy / d) * overlap;
+// ==========================================
+// 4. 오브젝트 및 엔티티
+// ==========================================
+
+class Rock {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.radius = 25;
+    this.alive = true;
+    this.shake = 0;
+  }
+  hit() {
+    this.shake = 0.22;
+  }
+  update(dt) {
+    if (this.shake > 0) this.shake -= dt;
+  }
+  draw(ctx) {
+    if (!this.alive) return;
+    ctx.save();
+    let ox = 0, oy = 0;
+    if (this.shake > 0) {
+      ox = (Math.random() - 0.5) * 8;
+      oy = (Math.random() - 0.5) * 8;
+    }
+    ctx.beginPath();
+    ctx.ellipse(this.x + ox, this.y + oy + 18, this.radius * 1.15, this.radius * 0.55, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(this.x + ox, this.y + oy, this.radius, 0, Math.PI * 2);
+    ctx.fillStyle = '#64748b';
+    ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#334155';
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(this.x + ox - 6, this.y + oy - 6, this.radius * 0.55, 0, Math.PI * 2);
+    ctx.fillStyle = '#94a3b8';
+    ctx.fill();
+
+    ctx.restore();
+  }
+}
+
+class RockDrop {
+  constructor(x, y, vx, vy) {
+    this.x = x;
+    this.y = y;
+    this.vx = vx;
+    this.vy = vy;
+    this.radius = 10;
+    this.collected = false;
+    this.bobTimer = Math.random() * Math.PI * 2;
+  }
+  update(dt, player) {
+    this.bobTimer += dt * 4;
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
+    this.vx *= Math.pow(0.08, dt);
+    this.vy *= Math.pow(0.08, dt);
+
+    this.x = V.clamp(this.x, 20, CW - 20);
+    this.y = V.clamp(this.y, 20, CH - 20);
+
+    const dist = V.dist(this.x, this.y, player.x, player.y);
+    if (dist < 38 + player.radius) {
+      this.collected = true;
+      player.addRock();
+      audio.playTone(840, 'sine', 0.1, 0.22, 0.01);
+    }
+  }
+  draw(ctx) {
+    ctx.save();
+    const bob = Math.sin(this.bobTimer) * 3;
+    ctx.shadowColor = '#ffe082';
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y + bob, this.radius, 0, Math.PI * 2);
+    ctx.fillStyle = '#b0bec5';
+    ctx.fill();
+    ctx.strokeStyle = '#eceff1';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.fillStyle = '#fff9c4';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('✦', this.x, this.y + bob - 12);
+    ctx.restore();
+  }
+}
+
+class RockProjectile {
+  constructor(x, y, vx, vy) {
+    this.x = x;
+    this.y = y;
+    this.vx = vx;
+    this.vy = vy;
+    this.radius = 9;
+    this.alive = true;
+    this.rot = 0;
+  }
+  update(dt) {
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
+    this.rot += 12 * dt;
+    if (this.x < 0 || this.x > CW || this.y < 0 || this.y > CH) {
+      this.alive = false;
+    }
+  }
+  draw(ctx) {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.rot);
+    ctx.beginPath();
+    ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+    ctx.fillStyle = '#78909c';
+    ctx.fill();
+    ctx.strokeStyle = '#cfd8dc';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+class RopeDrop {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.radius = 16;
+    this.collected = false;
+    this.timer = 0;
+  }
+  update(dt, player) {
+    this.timer += dt;
+    const dist = V.dist(this.x, this.y, player.x, player.y);
+    if (dist < 38 + player.radius) {
+      this.collected = true;
+      player.unlockPhase3Items();
+      audio.playTone(660, 'sine', 0.25, 0.35, 0.01);
+    }
+  }
+  draw(ctx) {
+    ctx.save();
+    const bob = Math.sin(this.timer * 4) * 4;
+    ctx.shadowColor = '#ff9800';
+    ctx.shadowBlur = 16;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y + bob, this.radius, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffb74d';
+    ctx.fill();
+    ctx.strokeStyle = '#e65100';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    ctx.strokeStyle = '#5d4037';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y + bob, 8, 0, Math.PI * 1.5);
+    ctx.stroke();
+
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('밧줄', this.x, this.y + bob - 18);
+    ctx.restore();
+  }
+}
+
+class RopeProjectile {
+  constructor(x, y, targetX, targetY) {
+    this.startX = x;
+    this.startY = y;
+    this.x = x;
+    this.y = y;
+    const dir = V.normalize(targetX - x, targetY - y);
+    this.speed = 17 * 60; // 속도 17
+    this.vx = dir.x * this.speed;
+    this.vy = dir.y * this.speed;
+    this.maxDist = 440;
+    this.distTraveled = 0;
+    this.alive = true;
+  }
+  update(dt, player) {
+    this.startX = player.x;
+    this.startY = player.y;
+    const step = this.speed * dt;
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
+    this.distTraveled += step;
+    if (this.distTraveled >= this.maxDist) {
+      this.alive = false;
+    }
+  }
+  draw(ctx) {
+    ctx.save();
+    ctx.strokeStyle = '#d7ccc8';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(this.startX, this.startY);
+    ctx.lineTo(this.x, this.y);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, 8, 0, Math.PI * 2);
+    ctx.fillStyle = '#8d6e63';
+    ctx.fill();
+    ctx.strokeStyle = '#d7ccc8';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+class SlingshotProjectile {
+  constructor(x, y, targetX, targetY) {
+    this.x = x;
+    this.y = y;
+    const dir = V.normalize(targetX - x, targetY - y);
+    this.speed = 14 * 60; // 속도 14
+    this.vx = dir.x * this.speed;
+    this.vy = dir.y * this.speed;
+    this.radius = 5.5;
+    this.alive = true;
+  }
+  update(dt) {
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
+    if (this.x < 0 || this.x > CW || this.y < 0 || this.y > CH) {
+      this.alive = false;
+    }
+  }
+  draw(ctx) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    ctx.fillStyle = '#ef5350';
+    ctx.fill();
+    ctx.strokeStyle = '#ffcdd2';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+class Chicken {
+  constructor(x, y, type = 'white', angle = null) {
+    this.x = x;
+    this.y = y;
+    this.type = type;
+    this.radius = 14;
+    this.speed = (type === 'white' ? 2.3 : 3.1) * 60;
+    if (angle === null) {
+      const a = Math.random() * Math.PI * 2;
+      this.vx = Math.cos(a) * this.speed;
+      this.vy = Math.sin(a) * this.speed;
+    } else {
+      this.vx = Math.cos(angle) * this.speed;
+      this.vy = Math.sin(angle) * this.speed;
+    }
+    this.alive = true;
+    this.bobTimer = Math.random() * Math.PI * 2;
+  }
+  update(dt, rocks) {
+    this.bobTimer += dt * 10;
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
+
+    if (this.x - this.radius < 0) {
+      this.x = this.radius;
+      this.vx = Math.abs(this.vx);
+    } else if (this.x + this.radius > CW) {
+      this.x = CW - this.radius;
+      this.vx = -Math.abs(this.vx);
+    }
+    if (this.y - this.radius < 0) {
+      this.y = this.radius;
+      this.vy = Math.abs(this.vy);
+    } else if (this.y + this.radius > CH) {
+      this.y = CH - this.radius;
+      this.vy = -Math.abs(this.vy);
+    }
+
+    for (const rock of rocks) {
+      if (!rock.alive) continue;
+      const d = V.dist(this.x, this.y, rock.x, rock.y);
+      if (d < this.radius + rock.radius) {
+        const nx = (this.x - rock.x) / d;
+        const ny = (this.y - rock.y) / d;
+        const ref = V.reflect(this.vx, this.vy, nx, ny);
+        this.vx = ref.x;
+        this.vy = ref.y;
+        this.x = rock.x + nx * (this.radius + rock.radius + 1);
+        this.y = rock.y + ny * (this.radius + rock.radius + 1);
+      }
+    }
+  }
+  draw(ctx) {
+    ctx.save();
+    const jump = Math.abs(Math.sin(this.bobTimer)) * 6;
+    ctx.beginPath();
+    ctx.ellipse(this.x, this.y + 10, this.radius * 0.9, this.radius * 0.45, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(this.x, this.y - jump, this.radius, 0, Math.PI * 2);
+    ctx.fillStyle = this.type === 'white' ? '#fdfdfd' : '#e53935';
+    ctx.fill();
+    ctx.strokeStyle = this.type === 'white' ? '#cfd8dc' : '#b71c1c';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(this.x, this.y - jump - this.radius + 2, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#d32f2f';
+    ctx.fill();
+
+    const dir = Math.atan2(this.vy, this.vx);
+    const bx = this.x + Math.cos(dir) * (this.radius - 2);
+    const by = this.y - jump + Math.sin(dir) * (this.radius - 2);
+    ctx.beginPath();
+    ctx.arc(bx, by, 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#ff9800';
+    ctx.fill();
+
+    ctx.fillStyle = '#111';
+    ctx.beginPath();
+    ctx.arc(this.x - 2, this.y - jump - 3, 2, 0, Math.PI * 2);
+    ctx.arc(this.x + 4, this.y - jump - 3, 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+}
+
+class Shockwave {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.radius = 20;
+    this.maxRadius = 440;
+    this.speed = 6.5 * 60;
+    this.alive = true;
+    this.hitPlayer = false;
+  }
+  update(dt, player) {
+    this.radius += this.speed * dt;
+    if (this.radius >= this.maxRadius) {
+      this.alive = false;
+    }
+    if (!this.hitPlayer) {
+      const d = V.dist(this.x, this.y, player.x, player.y);
+      if (Math.abs(d - this.radius) < 24) {
+        this.hitPlayer = true;
+        if (!player.isDashing) {
+          player.stun(0.75);
+          game.addText('기절!', player.x, player.y - 30, '#ffe082');
+        } else {
+          game.addText('회피!', player.x, player.y - 30, '#81d4fa');
         }
+      }
     }
+  }
+  draw(ctx) {
+    ctx.save();
+    const alpha = Math.max(0, 1 - this.radius / this.maxRadius);
+    ctx.lineWidth = 14 * alpha + 2;
+    ctx.strokeStyle = `rgba(186, 104, 200, ${alpha * 0.9})`;
+    ctx.shadowColor = '#ab47bc';
+    ctx.shadowBlur = 16;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
 }
 
-// 소가 바위에 부딪혔을 때 반사각 방향으로 짱돌 미끄러져 나오기
-function spawnReflectedStones(cowEntity, rockEntity, count) {
-    const baseAngle = Math.atan2(cowEntity.y - rockEntity.y, cowEntity.x - rockEntity.x);
-    for (let i = 0; i < count; i++) {
-        const spread = count === 1
-            ? (Math.random() - 0.5) * 0.7
-            : (i === 0 ? -0.45 : 0.45) + (Math.random() - 0.5) * 0.35;
-        const angle = baseAngle + spread;
-        const speed = 6.5 + Math.random() * 3.0;
-        droppedStones.push({
-            x: cowEntity.x,
-            y: cowEntity.y,
-            vx: Math.cos(angle) * speed,
-            vy: Math.sin(angle) * speed,
-            radius: CONFIG.DROP_STONE_RADIUS
-        });
-    }
-}
+class DustCloud {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.radius = 70 + Math.random() * 35;
+    this.lifetime = 2.0;
+    this.maxLifetime = 2.0;
+    this.rot = Math.random() * Math.PI * 2;
+  }
+  update(dt) {
+    this.lifetime -= dt;
+  }
+  draw(ctx) {
+    if (this.lifetime <= 0) return;
+    ctx.save();
+    const alpha = Math.min(0.92, (this.lifetime / this.maxLifetime) * 0.96);
+    ctx.globalAlpha = alpha;
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.rot);
 
-// 1페이즈 일반 닭 3마리 소환 (최대 9마리 제한)
-function summonNormalChickens() {
-    for (let i = 0; i < 3; i++) {
-        if (chickens.length >= CONFIG.MAX_CHICKENS) break;
-        const angle = (Math.PI * 2 / 3) * i + Math.random() * 0.8;
-        chickens.push({
-            x: cow.x + Math.cos(angle) * 32,
-            y: cow.y + Math.sin(angle) * 32,
-            vx: Math.cos(angle) * CONFIG.CHICKEN_SPEED,
-            vy: Math.sin(angle) * CONFIG.CHICKEN_SPEED,
-            radius: CONFIG.CHICKEN_RADIUS,
-            isRed: false,
-            hopOffset: Math.random() * Math.PI * 2
-        });
-    }
-}
-
-// 2페이즈 빨간 닭 4방향 발사 (90도 간격)
-function summonRedChickensBurst(offsetAngle) {
-    for (let i = 0; i < 4; i++) {
-        if (chickens.length >= CONFIG.MAX_CHICKENS) break;
-        const angle = offsetAngle + (Math.PI / 2) * i;
-        chickens.push({
-            x: cow.x + Math.cos(angle) * 30,
-            y: cow.y + Math.sin(angle) * 30,
-            vx: Math.cos(angle) * CONFIG.RED_CHICKEN_SPEED,
-            vy: Math.sin(angle) * CONFIG.RED_CHICKEN_SPEED,
-            radius: CONFIG.CHICKEN_RADIUS,
-            isRed: true,
-            hopOffset: Math.random() * Math.PI * 2
-        });
-    }
+    ctx.fillStyle = '#d7ccc8';
+    ctx.beginPath();
+    ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+    ctx.arc(-22, -16, this.radius * 0.8, 0, Math.PI * 2);
+    ctx.arc(22, -12, this.radius * 0.75, 0, Math.PI * 2);
+    ctx.arc(16, 22, this.radius * 0.85, 0, Math.PI * 2);
+    ctx.arc(-16, 20, this.radius * 0.7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
 }
 
 // ==========================================
-// 4. 게임 초기화 및 페이즈 전환
+// 5. 플레이어 (오리) 시스템
 // ==========================================
-function initGameEntities() {
-    // 플레이어 초기화 (Y절편 중앙 하단)
-    player = {
-        x: canvas.width / 2,
-        y: 580,
-        radius: CONFIG.PLAYER_RADIUS,
-        flip: false,
-        isStunned: false,
-        stunEndTime: 0,
-        isDashing: false,
-        dashEndTime: 0,
-        dashCooldownEnd: 0,
-        dashAngle: 0,
-        isOrbiting: false,
-        orbitEndTime: 0,
-        orbitAngle: 0,
-        orbitRadius: 130
-    };
+class Player {
+  constructor() {
+    this.reset();
+  }
 
-    // 보스 소 초기화 (Y절편 중앙 상단)
-    cow = {
-        x: canvas.width / 2,
-        y: 130,
-        radius: CONFIG.COW_RADIUS,
-        hp: CONFIG.COW_MAX_HP,
-        maxHp: CONFIG.COW_MAX_HP,
-        phase3Entered: false,
-        isPreDashing: false,
-        preDashEndTime: 0,
-        isDashing: false,
-        isChainDashing: false,
-        isWallBounceDash: false,
-        isDustDashing: false,
-        lastDustSpawnTime: 0,
-        bouncesLeft: 0,
-        dashAngle: 0,
-        dashTargetX: 0,
-        dashTargetY: 0,
-        isJumping: false,
-        jumpStartTime: 0,
-        jumpHeight: 0,
-        isHealing: false,
-        healStartTime: 0,
-        healLastTime: 0,
-        isStunned: false,
-        stunEndTime: 0,
-        nextPatternTime: Date.now() + 1800,
-        redChickenSecondBurstTime: 0
-    };
+  reset() {
+    this.x = 500;
+    this.y = 580;
+    this.radius = 20;
+    this.baseSpeed = 4.2 * 60; // 252 px/s
 
-    // 바위(장애물) 살짝 작게 5개를 맵 전역에 넓게 배치
-    rocks = [
-        { x: 200, y: 180, radius: 24 },
-        { x: 800, y: 180, radius: 24 },
-        { x: 500, y: 350, radius: 25 },
-        { x: 200, y: 520, radius: 24 },
-        { x: 800, y: 520, radius: 24 }
-    ];
-    playerTrails = [];
-    droppedStones = [];
-    projectiles = [];
-    chickens = [];
-    shockwaves = [];
-    dustClouds = [];
-    droppedRope = null;
-    activeRope = null;
-    slingshotCooldownEnd = 0;
-    ropeCooldownEnd = 0;
-    floatingTexts = [];
-    inventory = [null, null, null, null];
-    selectedSlot = 0;
-}
+    this.isDashing = false;
+    this.dashSpeed = 13.5 * 60; // 810 px/s
+    this.dashDuration = 0.16;
+    this.dashTimer = 0;
+    this.dashCooldown = 1.0;
+    this.dashCdTimer = 0;
+    this.dashDirX = 0;
+    this.dashDirY = 0;
+    this.afterimages = [];
 
-function startTransition() {
-    startScreen.classList.add('hidden');
-    resultScreen.classList.add('hidden');
-    initGameEntities();
-    gameState = 'BOSS_INTRO';
-    bossIntroStartTime = Date.now();
-}
+    this.stunTimer = 0;
+    this.stunStarsAngle = 0;
 
-function returnToTitle() {
-    resultScreen.classList.add('hidden');
-    startScreen.classList.remove('hidden');
-    gameState = 'START';
-}
+    this.isRopeGrappled = false;
+    this.ropeTimer = 0;
+    this.ropeAngle = 0;
+    this.ropeDist = 110;
+    this.ropeAngularSpeed = Math.PI * 4;
 
-// 3페이즈 돌입 처리: 인벤토리/바위/돌/닭 전부 제거 + 맵에 밧줄 생성
-function enterPhase3() {
-    if (!cow || cow.phase3Entered) return;
-    cow.phase3Entered = true;
+    this.slots = ['rock', null, null, null];
+    this.rockCount = 0;
+    this.selectedSlot = 0;
+    this.slingCdTimer = 0;
+    this.ropeCdTimer = 0;
 
-    inventory = [null, null, null, null];
-    selectedSlot = 0;
-    rocks = [];
-    droppedStones = [];
-    projectiles = [];
-    chickens = [];
-    dustClouds = [];
-    cow.redChickenSecondBurstTime = 0;
+    this.aimAngle = 0;
+    this.alive = true;
+  }
 
-    // 맵 중앙 근처(소와 겹치지 않는 위치)에 밧줄 1개 생성
-    let ropeX = canvas.width / 2;
-    let ropeY = canvas.height / 2;
-    if (dist(ropeX, ropeY, cow.x, cow.y) < 120) {
-        ropeY = cow.y < canvas.height / 2 ? canvas.height * 0.65 : canvas.height * 0.35;
-    }
-    droppedRope = {
-        x: ropeX,
-        y: ropeY,
-        radius: 16
-    };
+  stun(duration = 0.75) {
+    if (this.isRopeGrappled) return;
+    this.stunTimer = Math.max(this.stunTimer, duration);
+  }
 
-    spawnFloatingText(cow.x, cow.y - 45, '3페이즈 돌입!', '#e040fb');
-}
+  addRock(count = 1) {
+    this.rockCount += count;
+    game.addText(`+${count} 짱돌`, this.x, this.y - 25, '#ffe082', 16);
+  }
 
-// ==========================================
-// 5. 아이템 사용 및 대쉬 액션
-// ==========================================
-function useSelectedItem() {
-    const item = inventory[selectedSlot];
-    if (!item) return;
+  unlockPhase3Items() {
+    this.slots[0] = 'rope';
+    this.slots[1] = 'slingshot';
+    this.slots[2] = null;
+    this.slots[3] = null;
+    this.selectedSlot = 0;
+    game.addText('밧줄 & 새총 획득!', this.x, this.y - 30, '#ff9800', 22);
+  }
 
-    if (item === 'stone') {
-        throwStone();
-    } else if (item === 'rope') {
-        throwRope();
-    } else if (item === 'slingshot') {
-        shootSlingshot();
-    }
-}
+  update(dt, input, mouse, boss, rocks) {
+    if (!this.alive) return;
 
-function throwStone() {
-    if (inventory[selectedSlot] !== 'stone') return;
-    inventory[selectedSlot] = null;
+    if (this.dashCdTimer > 0) this.dashCdTimer -= dt;
+    if (this.slingCdTimer > 0) this.slingCdTimer -= dt;
+    if (this.ropeCdTimer > 0) this.ropeCdTimer -= dt;
 
-    const angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
-    projectiles.push({
-        x: player.x,
-        y: player.y,
-        vx: Math.cos(angle) * CONFIG.STONE_SPEED,
-        vy: Math.sin(angle) * CONFIG.STONE_SPEED,
-        radius: CONFIG.STONE_RADIUS,
-        damage: CONFIG.STONE_DAMAGE,
-        isPellet: false
-    });
-}
-
-// 3페이즈 밧줄 발사 (비소모성, 마우스 방향)
-function throwRope() {
-    const now = Date.now();
-    if (activeRope || player.isOrbiting || now < ropeCooldownEnd) return;
-
-    const angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
-    activeRope = {
-        x: player.x,
-        y: player.y,
-        startX: player.x,
-        startY: player.y,
-        vx: Math.cos(angle) * CONFIG.ROPE_SPEED,
-        vy: Math.sin(angle) * CONFIG.ROPE_SPEED,
-        radius: 12
-    };
-}
-
-// 3페이즈 새총 발사 (비소모성, 0.5초 쿨타임, 짱돌의 1/3 데미지)
-function shootSlingshot() {
-    const now = Date.now();
-    if (now < slingshotCooldownEnd) return;
-    slingshotCooldownEnd = now + CONFIG.SLINGSHOT_COOLDOWN;
-
-    const angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
-    projectiles.push({
-        x: player.x,
-        y: player.y,
-        vx: Math.cos(angle) * CONFIG.SLINGSHOT_SPEED,
-        vy: Math.sin(angle) * CONFIG.SLINGSHOT_SPEED,
-        radius: CONFIG.SLINGSHOT_RADIUS,
-        damage: CONFIG.SLINGSHOT_DAMAGE,
-        isPellet: true
-    });
-}
-
-// 플레이어(오리) Shift 대쉬 발동
-function triggerPlayerDash() {
-    const now = Date.now();
-    if (!player || player.isStunned || player.isDashing || now < player.dashCooldownEnd) return;
-
-    // 밧줄 회전 중 대쉬 시 회전 해제
-    if (player.isOrbiting) {
-        player.isOrbiting = false;
-        ropeCooldownEnd = now + CONFIG.ROPE_COOLDOWN;
+    // 대쉬 버튼 쿨타임 UI 연동
+    const dashBtn = document.getElementById('btn-dash');
+    if (dashBtn) {
+      if (this.dashCdTimer > 0) {
+        dashBtn.classList.add('cooldown');
+      } else {
+        dashBtn.classList.remove('cooldown');
+      }
     }
 
-    let moveX = 0;
-    let moveY = 0;
-    if (keys['w'] || keys['ArrowUp']) moveY -= 1;
-    if (keys['s'] || keys['ArrowDown']) moveY += 1;
-    if (keys['a'] || keys['ArrowLeft']) moveX -= 1;
-    if (keys['d'] || keys['ArrowRight']) moveX += 1;
+    for (let i = this.afterimages.length - 1; i >= 0; i--) {
+      this.afterimages[i].alpha -= dt * 6.5;
+      if (this.afterimages[i].alpha <= 0) {
+        this.afterimages.splice(i, 1);
+      }
+    }
 
+    // 조준 각도 갱신
+    if (game.isMobileUsingJoystick && (game.touchMoveX !== 0 || game.touchMoveY !== 0)) {
+      this.aimAngle = Math.atan2(game.touchMoveY, game.touchMoveX);
+    } else {
+      this.aimAngle = Math.atan2(mouse.y - this.y, mouse.x - this.x);
+    }
+
+    if (this.stunTimer > 0) {
+      this.stunTimer -= dt;
+      this.stunStarsAngle += dt * 8;
+      return;
+    }
+
+    if (this.isRopeGrappled) {
+      this.ropeTimer -= dt;
+      this.ropeAngle += this.ropeAngularSpeed * dt;
+      this.x = boss.x + Math.cos(this.ropeAngle) * this.ropeDist;
+      this.y = boss.y + Math.sin(this.ropeAngle) * this.ropeDist;
+
+      this.afterimages.push({ x: this.x, y: this.y, angle: this.aimAngle, alpha: 0.5 });
+
+      if (input.shift) {
+        this.isRopeGrappled = false;
+        audio.playDash();
+        game.addText('밧줄 탈출!', this.x, this.y - 20, '#ffb74d');
+      }
+
+      if (this.ropeTimer <= 0) {
+        this.isRopeGrappled = false;
+      }
+      return;
+    }
+
+    if (this.isDashing) {
+      this.dashTimer -= dt;
+      this.x += this.dashDirX * this.dashSpeed * dt;
+      this.y += this.dashDirY * this.dashSpeed * dt;
+
+      this.afterimages.push({ x: this.x, y: this.y, angle: this.aimAngle, alpha: 0.6 });
+
+      if (this.dashTimer <= 0) {
+        this.isDashing = false;
+      }
+    } else {
+      // 8방향 키보드 이동 + 가상 조이스틱 이동 결합
+      let moveX = 0;
+      let moveY = 0;
+      if (input.w) moveY -= 1;
+      if (input.s) moveY += 1;
+      if (input.a) moveX -= 1;
+      if (input.d) moveX += 1;
+
+      // 모바일 조이스틱 입력 결합
+      if (game.touchMoveX !== 0 || game.touchMoveY !== 0) {
+        moveX += game.touchMoveX;
+        moveY += game.touchMoveY;
+      }
+
+      if (moveX !== 0 || moveY !== 0) {
+        const norm = V.normalize(moveX, moveY);
+        this.x += norm.x * this.baseSpeed * dt;
+        this.y += norm.y * this.baseSpeed * dt;
+      }
+
+      if (input.shift && this.dashCdTimer <= 0) {
+        this.triggerDash(moveX, moveY);
+      }
+    }
+
+    this.x = V.clamp(this.x, this.radius, CW - this.radius);
+    this.y = V.clamp(this.y, this.radius, CH - this.radius);
+
+    for (const rock of rocks) {
+      if (!rock.alive) continue;
+      const d = V.dist(this.x, this.y, rock.x, rock.y);
+      if (d < this.radius + rock.radius) {
+        const nx = (this.x - rock.x) / d;
+        const ny = (this.y - rock.y) / d;
+        this.x = rock.x + nx * (this.radius + rock.radius);
+        this.y = rock.y + ny * (this.radius + rock.radius);
+      }
+    }
+  }
+
+  triggerDash(moveX = 0, moveY = 0) {
+    if (this.dashCdTimer > 0) return;
+    this.isDashing = true;
+    this.dashTimer = this.dashDuration;
+    this.dashCdTimer = this.dashCooldown;
     if (moveX !== 0 || moveY !== 0) {
-        player.dashAngle = Math.atan2(moveY, moveX);
+      const norm = V.normalize(moveX, moveY);
+      this.dashDirX = norm.x;
+      this.dashDirY = norm.y;
     } else {
-        player.dashAngle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
+      this.dashDirX = Math.cos(this.aimAngle);
+      this.dashDirY = Math.sin(this.aimAngle);
     }
+    audio.playDash();
+  }
 
-    if (Math.cos(player.dashAngle) < 0) player.flip = true;
-    else if (Math.cos(player.dashAngle) > 0) player.flip = false;
+  startRopeGrapple(boss) {
+    this.isRopeGrappled = true;
+    this.ropeTimer = 3.0;
+    this.ropeDist = V.clamp(V.dist(this.x, this.y, boss.x, boss.y), 85, 140);
+    this.ropeAngle = Math.atan2(this.y - boss.y, this.x - boss.x);
+    audio.playRope();
+    game.addText('밧줄 고정!', this.x, this.y - 25, '#ff9800');
+  }
 
-    player.isDashing = true;
-    player.dashEndTime = now + CONFIG.PLAYER_DASH_DURATION;
-    player.dashCooldownEnd = now + CONFIG.PLAYER_DASH_COOLDOWN;
-}
+  useItem(targetPos, boss) {
+    if (this.stunTimer > 0) return;
+    const currentItem = this.slots[this.selectedSlot];
 
-// ==========================================
-// 6. 입력 이벤트 리스너
-// ==========================================
-function updateMousePos(e) {
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    mouse.x = (e.clientX - rect.left) * scaleX;
-    mouse.y = (e.clientY - rect.top) * scaleY;
-}
-
-canvas.addEventListener('mousemove', updateMousePos);
-
-startScreen.addEventListener('mousedown', () => {
-    if (gameState === 'START') startTransition();
-});
-
-resultScreen.addEventListener('mousedown', () => {
-    if (Date.now() < stateTimer) return;
-    if (gameState === 'GAMEOVER') startTransition();
-    else if (gameState === 'CLEAR') returnToTitle();
-});
-
-canvas.addEventListener('mousedown', (e) => {
-    updateMousePos(e);
-    if (gameState === 'START') {
-        startTransition();
-        return;
+    if (currentItem === 'rock') {
+      if (this.rockCount > 0) {
+        this.rockCount--;
+        const dir = V.normalize(targetPos.x - this.x, targetPos.y - this.y);
+        const speed = 13 * 60;
+        game.projectiles.push(new RockProjectile(this.x, this.y, dir.x * speed, dir.y * speed));
+        audio.playTone(400, 'sine', 0.1, 0.25, 0.01);
+      } else {
+        game.addText('돌이 없다!', this.x, this.y - 20, '#ef5350', 14);
+      }
     }
-    if (gameState === 'GAMEOVER' && Date.now() >= stateTimer) {
-        startTransition();
-        return;
+    else if (currentItem === 'rope') {
+      if (this.ropeCdTimer <= 0 && !this.isRopeGrappled) {
+        this.ropeCdTimer = 0.5;
+        game.ropeShot = new RopeProjectile(this.x, this.y, targetPos.x, targetPos.y);
+        audio.playRope();
+      }
     }
-    if (gameState === 'CLEAR' && Date.now() >= stateTimer) {
-        returnToTitle();
-        return;
+    else if (currentItem === 'slingshot') {
+      if (this.slingCdTimer <= 0) {
+        this.slingCdTimer = 0.5;
+        game.projectiles.push(new SlingshotProjectile(this.x, this.y, targetPos.x, targetPos.y));
+        audio.playSling();
+      }
     }
-    if (gameState === 'PLAYING' && player && !player.isStunned) {
-        useSelectedItem();
+  }
+
+  draw(ctx, boss) {
+    for (const img of this.afterimages) {
+      ctx.save();
+      ctx.globalAlpha = img.alpha * 0.45;
+      ctx.translate(img.x, img.y);
+      ctx.rotate(img.angle);
+      this.drawDuckBody(ctx, true);
+      ctx.restore();
     }
-});
-
-window.addEventListener('wheel', (e) => {
-    if (gameState !== 'PLAYING') return;
-    if (e.deltaY > 0) selectedSlot = (selectedSlot + 1) % 4;
-    else if (e.deltaY < 0) selectedSlot = (selectedSlot + 3) % 4;
-});
-
-window.addEventListener('keydown', (e) => {
-    pressedCodes.add(e.code);
-    keys[e.key.toLowerCase()] = true;
-    keys[e.key] = true;
-
-    if (gameState === 'START') {
-        startTransition();
-        return;
-    }
-    if (gameState === 'GAMEOVER' && Date.now() >= stateTimer) {
-        startTransition();
-        return;
-    }
-    if (gameState === 'CLEAR' && Date.now() >= stateTimer) {
-        returnToTitle();
-        return;
-    }
-
-    if (gameState !== 'PLAYING') return;
-
-    // 개발자 전용 치트키: Left Ctrl + Left Shift + 1 / 2 / 3
-    if (pressedCodes.has('ControlLeft') && pressedCodes.has('ShiftLeft')) {
-        if (e.code === 'Digit1' || e.code === 'Numpad1') {
-            if (cow && cow.hp > 0) {
-                cow.hp = CONFIG.COW_MAX_HP;
-                cow.phase3Entered = false;
-            }
-            return;
-        }
-        if (e.code === 'Digit2' || e.code === 'Numpad2') {
-            if (cow && cow.hp > 0) {
-                cow.hp = CONFIG.COW_PHASE2_HP;
-                cow.phase3Entered = false;
-            }
-            return;
-        }
-        if (e.code === 'Digit3' || e.code === 'Numpad3') {
-            if (cow && cow.hp > 0) {
-                cow.hp = CONFIG.COW_PHASE3_HP;
-                enterPhase3();
-            }
-            return;
-        }
-    }
-
-    // Shift 대쉬 (치트키 조합 중에는 발동 방지)
-    if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && !pressedCodes.has('ControlLeft')) {
-        triggerPlayerDash();
-        return;
-    }
-
-    // 인벤토리 슬롯 선택 (1~4)
-    if (e.key >= '1' && e.key <= '4') {
-        selectedSlot = parseInt(e.key, 10) - 1;
-    }
-});
-
-window.addEventListener('keyup', (e) => {
-    pressedCodes.delete(e.code);
-    keys[e.key.toLowerCase()] = false;
-    keys[e.key] = false;
-});
-
-// ==========================================
-// 7. 메인 업데이트 로직
-// ==========================================
-function update() {
-    const now = Date.now();
-
-    // 1) 보스 등장 3초 연출
-    if (gameState === 'BOSS_INTRO') {
-        if (now - bossIntroStartTime >= CONFIG.BOSS_INTRO_DURATION) {
-            gameState = 'PLAYING';
-            cow.nextPatternTime = now + 1000;
-        }
-        return;
-    }
-
-    if (gameState !== 'PLAYING') return;
-
-    // 2) 플레이어(오리) 업데이트
-    if (player.isStunned) {
-        player.isDashing = false;
-        player.isOrbiting = false;
-        if (now >= player.stunEndTime) {
-            player.isStunned = false;
-        }
-    } else if (player.isOrbiting) {
-        // 밧줄로 소를 기준으로 3초 동안 회전
-        if (now >= player.orbitEndTime || !cow || cow.hp <= 0) {
-            player.isOrbiting = false;
-            ropeCooldownEnd = now + CONFIG.ROPE_COOLDOWN;
-        } else {
-            player.orbitAngle += CONFIG.ROPE_ORBIT_SPEED;
-            player.x = cow.x + Math.cos(player.orbitAngle) * player.orbitRadius;
-            player.y = cow.y + Math.sin(player.orbitAngle) * player.orbitRadius;
-
-            if (Math.sin(player.orbitAngle) > 0) player.flip = true;
-            else player.flip = false;
-        }
-    } else if (player.isDashing) {
-        player.x += Math.cos(player.dashAngle) * CONFIG.PLAYER_DASH_SPEED;
-        player.y += Math.sin(player.dashAngle) * CONFIG.PLAYER_DASH_SPEED;
-        playerTrails.push({
-            x: player.x,
-            y: player.y,
-            alpha: 0.55
-        });
-        if (now >= player.dashEndTime) {
-            player.isDashing = false;
-        }
-    } else {
-        let moveX = 0;
-        let moveY = 0;
-        if (keys['w'] || keys['ArrowUp']) moveY -= 1;
-        if (keys['s'] || keys['ArrowDown']) moveY += 1;
-        if (keys['a'] || keys['ArrowLeft']) moveX -= 1;
-        if (keys['d'] || keys['ArrowRight']) moveX += 1;
-
-        if (moveX !== 0 || moveY !== 0) {
-            const len = Math.hypot(moveX, moveY);
-            moveX /= len;
-            moveY /= len;
-            player.x += moveX * CONFIG.PLAYER_SPEED;
-            player.y += moveY * CONFIG.PLAYER_SPEED;
-
-            if (moveX < 0) player.flip = true;
-            else if (moveX > 0) player.flip = false;
-        }
-    }
-
-    // 대쉬 잔상 페이드 아웃
-    for (let i = playerTrails.length - 1; i >= 0; i--) {
-        playerTrails[i].alpha -= 0.06;
-        if (playerTrails[i].alpha <= 0) {
-            playerTrails.splice(i, 1);
-        }
-    }
-
-    // 플레이어 맵 경계 및 바위 충돌 제한
-    player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x));
-    player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y));
-    resolveRockCollisions(player);
-
-    // 바닥에 생성된 밧줄 획득 판정 (밧줄 + 새총 함께 지급)
-    if (droppedRope && dist(player.x, player.y, droppedRope.x, droppedRope.y) < CONFIG.PICKUP_RANGE + 6) {
-        inventory[0] = 'rope';
-        inventory[1] = 'slingshot';
-        selectedSlot = 0;
-        droppedRope = null;
-        spawnFloatingText(player.x, player.y - 30, '밧줄 & 새총 획득!', '#ffd54f');
-    }
-
-    // 발사된 밧줄 업데이트
-    if (activeRope) {
-        activeRope.x += activeRope.vx;
-        activeRope.y += activeRope.vy;
-
-        // 소에게 명중 시 소를 기준으로 3초간 회전 시작
-        if (cow && cow.hp > 0 && dist(activeRope.x, activeRope.y, cow.x, cow.y) < activeRope.radius + cow.radius) {
-            player.isOrbiting = true;
-            player.orbitEndTime = now + CONFIG.ROPE_ORBIT_DURATION;
-            player.orbitAngle = Math.atan2(player.y - cow.y, player.x - cow.x);
-            player.orbitRadius = Math.max(105, Math.min(185, dist(player.x, player.y, cow.x, cow.y)));
-            activeRope = null;
-            spawnFloatingText(cow.x, cow.y - 35, '밧줄 걸림!', '#ffb74d');
-        } else if (
-            dist(activeRope.startX, activeRope.startY, activeRope.x, activeRope.y) >= CONFIG.ROPE_MAX_DIST ||
-            activeRope.x < 0 || activeRope.x > canvas.width ||
-            activeRope.y < 0 || activeRope.y > canvas.height
-        ) {
-            activeRope = null;
-            ropeCooldownEnd = now + CONFIG.ROPE_COOLDOWN;
-        }
-    }
-
-    // 3) 보스(소) AI 업데이트
-    if (cow.hp > 0) {
-        // 반피 도달 시 3페이즈 자동 돌입
-        if (cow.hp <= CONFIG.COW_PHASE3_HP && !cow.phase3Entered) {
-            enterPhase3();
-        }
-
-        const isPhase3 = cow.phase3Entered;
-        const isPhase2 = !isPhase3 && cow.hp <= CONFIG.COW_PHASE2_HP;
-
-        // 2페이즈 빨간 닭 2차 발사 예약 처리 (3페이즈에서는 실행 안 함)
-        if (!isPhase3 && cow.redChickenSecondBurstTime > 0 && now >= cow.redChickenSecondBurstTime) {
-            cow.redChickenSecondBurstTime = 0;
-            summonRedChickensBurst(Math.PI / 4);
-        }
-
-        if (cow.isStunned) {
-            // 기절 상태로 스스로 회복 중인 경우 (2.5초 동안 최대 체력의 5% 회복)
-            if (cow.isHealing) {
-                const dt = Math.max(0, now - cow.healLastTime);
-                cow.healLastTime = now;
-                const healAmount = (cow.maxHp * CONFIG.COW_HEAL_RATIO) * (dt / CONFIG.COW_HEAL_DURATION);
-                cow.hp = Math.min(cow.maxHp, cow.hp + healAmount);
-            }
-
-            // 기절 또는 대기 중
-            if (now >= cow.stunEndTime) {
-                if (cow.isHealing) {
-                    cow.isHealing = false;
-                    spawnFloatingText(cow.x, cow.y - 40, '+5% 회복!', '#69f0ae');
-                }
-                cow.isStunned = false;
-                const cooldown = (isPhase2 || isPhase3) ? CONFIG.COW_P2_COOLDOWN : CONFIG.COW_P1_COOLDOWN;
-                cow.nextPatternTime = now + cooldown;
-            }
-        } else if (cow.isJumping) {
-            // 3페이즈 점프 후 착지 충격파 패턴
-            const progress = Math.min(1, (now - cow.jumpStartTime) / CONFIG.COW_JUMP_DURATION);
-            cow.jumpHeight = Math.sin(progress * Math.PI) * 125;
-
-            if (progress >= 1) {
-                cow.isJumping = false;
-                cow.jumpHeight = 0;
-                cow.isStunned = true;
-                cow.stunEndTime = now + CONFIG.COW_JUMP_RECOVERY;
-
-                shockwaves.push({
-                    x: cow.x,
-                    y: cow.y,
-                    radius: cow.radius,
-                    maxRadius: CONFIG.SHOCKWAVE_MAX_RADIUS,
-                    hitPlayer: false
-                });
-                spawnFloatingText(cow.x, cow.y - 35, '쿵!', '#ffab40');
-            }
-        } else if (cow.isPreDashing) {
-            // 돌진 전 락온 (플레이어 위치 추적)
-            if (cow.isDustDashing) {
-                const dx = player.x - cow.x;
-                const dy = player.y - cow.y;
-                cow.dashTargetX = Math.max(cow.radius, Math.min(canvas.width - cow.radius, cow.x + dx * CONFIG.COW_DUST_DASH_MULTIPLIER));
-                cow.dashTargetY = Math.max(cow.radius, Math.min(canvas.height - cow.radius, cow.y + dy * CONFIG.COW_DUST_DASH_MULTIPLIER));
-            } else {
-                cow.dashTargetX = player.x;
-                cow.dashTargetY = player.y;
-            }
-            cow.dashAngle = Math.atan2(cow.dashTargetY - cow.y, cow.dashTargetX - cow.x);
-
-            if (now >= cow.preDashEndTime) {
-                cow.isPreDashing = false;
-                cow.isDashing = true;
-                cow.lastDustSpawnTime = 0;
-            }
-        } else if (cow.isDashing) {
-            const currentDashSpeed = cow.isChainDashing
-                ? CONFIG.COW_DASH_SPEED * CONFIG.COW_CHAIN_DASH_MULTIPLIER
-                : CONFIG.COW_DASH_SPEED;
-
-            cow.x += Math.cos(cow.dashAngle) * currentDashSpeed;
-            cow.y += Math.sin(cow.dashAngle) * currentDashSpeed;
-
-            // 먼지 구름 돌진 중 경로 주변에 모래 구름 생성
-            if (cow.isDustDashing && now - cow.lastDustSpawnTime >= 45) {
-                cow.lastDustSpawnTime = now;
-                for (let k = 0; k < 2; k++) {
-                    const offsetAngle = Math.random() * Math.PI * 2;
-                    const offsetDist = Math.random() * 48;
-                    dustClouds.push({
-                        x: cow.x + Math.cos(offsetAngle) * offsetDist,
-                        y: cow.y + Math.sin(offsetAngle) * offsetDist,
-                        radius: 56 + Math.random() * 24,
-                        createdAt: now,
-                        vx: (Math.random() - 0.5) * 0.4,
-                        vy: (Math.random() - 0.5) * 0.4,
-                        shade: Math.random()
-                    });
-                }
-            }
-
-            // 바위 충돌 체크
-            let hitRockIndex = -1;
-            for (let i = 0; i < rocks.length; i++) {
-                if (dist(cow.x, cow.y, rocks[i].x, rocks[i].y) < cow.radius + rocks[i].radius) {
-                    hitRockIndex = i;
-                    break;
-                }
-            }
-
-            if (hitRockIndex !== -1) {
-                const hitRock = rocks[hitRockIndex];
-                // 바위 바깥으로 위치 보정
-                const pushAngle = Math.atan2(cow.y - hitRock.y, cow.x - hitRock.x);
-                cow.x = hitRock.x + Math.cos(pushAngle) * (cow.radius + hitRock.radius + 1);
-                cow.y = hitRock.y + Math.sin(pushAngle) * (cow.radius + hitRock.radius + 1);
-
-                if (isPhase2) {
-                    // 2페이즈: 바위 영구 파괴 + 짱돌 2개 드랍
-                    spawnReflectedStones(cow, hitRock, 2);
-                    spawnFloatingText(hitRock.x, hitRock.y - 25, '와장창!', '#ffeb3b');
-                    rocks.splice(hitRockIndex, 1);
-                } else {
-                    // 1페이즈: 바위 유지 + 짱돌 1개 드랍
-                    spawnReflectedStones(cow, hitRock, 1);
-                }
-
-                cow.isDashing = false;
-                cow.isChainDashing = false;
-                cow.isWallBounceDash = false;
-                cow.isDustDashing = false;
-                cow.isStunned = true;
-                cow.stunEndTime = now + CONFIG.COW_WALL_STUN_TIME;
-            } else {
-                // 맵 경계 충돌 처리
-                let hitWallX = false;
-                let hitWallY = false;
-                if (cow.x <= cow.radius) {
-                    cow.x = cow.radius;
-                    hitWallX = true;
-                } else if (cow.x >= canvas.width - cow.radius) {
-                    cow.x = canvas.width - cow.radius;
-                    hitWallX = true;
-                }
-                if (cow.y <= cow.radius) {
-                    cow.y = cow.radius;
-                    hitWallY = true;
-                } else if (cow.y >= canvas.height - cow.radius) {
-                    cow.y = canvas.height - cow.radius;
-                    hitWallY = true;
-                }
-
-                if (hitWallX || hitWallY) {
-                    if (cow.isWallBounceDash && cow.bouncesLeft > 0) {
-                        // 반사각 계산
-                        let vx = Math.cos(cow.dashAngle);
-                        let vy = Math.sin(cow.dashAngle);
-                        if (hitWallX) vx = -vx;
-                        if (hitWallY) vy = -vy;
-                        cow.dashAngle = Math.atan2(vy, vx);
-                        cow.bouncesLeft--;
-                    } else {
-                        if (cow.isDustDashing) {
-                            for (let k = 0; k < 5; k++) {
-                                const a = (Math.PI * 2 / 5) * k + Math.random() * 0.5;
-                                dustClouds.push({
-                                    x: cow.x + Math.cos(a) * (25 + Math.random() * 35),
-                                    y: cow.y + Math.sin(a) * (25 + Math.random() * 35),
-                                    radius: 62 + Math.random() * 22,
-                                    createdAt: now,
-                                    vx: (Math.random() - 0.5) * 0.4,
-                                    vy: (Math.random() - 0.5) * 0.4,
-                                    shade: Math.random()
-                                });
-                            }
-                        }
-                        cow.isDashing = false;
-                        cow.isChainDashing = false;
-                        cow.isWallBounceDash = false;
-                        cow.isDustDashing = false;
-                        cow.isStunned = true;
-                        cow.stunEndTime = now + CONFIG.COW_WALL_STUN_TIME;
-                    }
-                } else if (!cow.isWallBounceDash) {
-                    // 1페이즈 일반 돌진 / 먼지 구름 2배 돌진: 목표 위치 도달 시 정지
-                    if (dist(cow.x, cow.y, cow.dashTargetX, cow.dashTargetY) <= currentDashSpeed + 4) {
-                        cow.x = Math.max(cow.radius, Math.min(canvas.width - cow.radius, cow.dashTargetX));
-                        cow.y = Math.max(cow.radius, Math.min(canvas.height - cow.radius, cow.dashTargetY));
-                        if (cow.isDustDashing) {
-                            for (let k = 0; k < 5; k++) {
-                                const a = (Math.PI * 2 / 5) * k + Math.random() * 0.5;
-                                dustClouds.push({
-                                    x: cow.x + Math.cos(a) * (25 + Math.random() * 35),
-                                    y: cow.y + Math.sin(a) * (25 + Math.random() * 35),
-                                    radius: 62 + Math.random() * 22,
-                                    createdAt: now,
-                                    vx: (Math.random() - 0.5) * 0.4,
-                                    vy: (Math.random() - 0.5) * 0.4,
-                                    shade: Math.random()
-                                });
-                            }
-                        }
-                        cow.isDashing = false;
-                        cow.isDustDashing = false;
-                        cow.isStunned = true;
-                        cow.stunEndTime = now + CONFIG.COW_END_WAIT_TIME;
-                    }
-                }
-            }
-        } else {
-            // 평소 상태: 플레이어 쪽으로 천천히 걸어옴
-            const angle = Math.atan2(player.y - cow.y, player.x - cow.x);
-            cow.x += Math.cos(angle) * CONFIG.COW_WALK_SPEED;
-            cow.y += Math.sin(angle) * CONFIG.COW_WALK_SPEED;
-            cow.x = Math.max(cow.radius, Math.min(canvas.width - cow.radius, cow.x));
-            cow.y = Math.max(cow.radius, Math.min(canvas.height - cow.radius, cow.y));
-            resolveRockCollisions(cow);
-
-            // 패턴 발동 체크
-            if (now >= cow.nextPatternTime) {
-                if (isPhase3) {
-                    // 3페이즈: 벽 반사 돌진(2) : 점프 충격파(2) : 무지성 연쇄 돌진(2) : 먼지 구름 2배 돌진(2) : 자가 회복 기절(1.5)
-                    const roll = Math.random() * 9.5;
-                    if (roll < 2) {
-                        cow.isPreDashing = true;
-                        cow.isChainDashing = false;
-                        cow.isWallBounceDash = true;
-                        cow.isDustDashing = false;
-                        cow.bouncesLeft = CONFIG.COW_NORMAL_BOUNCES;
-                        cow.preDashEndTime = now + CONFIG.COW_PRE_DASH_TIME;
-                    } else if (roll < 4) {
-                        cow.isJumping = true;
-                        cow.jumpStartTime = now;
-                        cow.jumpHeight = 0;
-                    } else if (roll < 6) {
-                        cow.isPreDashing = true;
-                        cow.isChainDashing = true;
-                        cow.isWallBounceDash = true;
-                        cow.isDustDashing = false;
-                        cow.bouncesLeft = CONFIG.COW_CHAIN_MAX_BOUNCES;
-                        cow.preDashEndTime = now + CONFIG.COW_PRE_DASH_TIME;
-                    } else if (roll < 8) {
-                        cow.isPreDashing = true;
-                        cow.isChainDashing = false;
-                        cow.isWallBounceDash = false;
-                        cow.isDustDashing = true;
-                        cow.bouncesLeft = 0;
-                        cow.preDashEndTime = now + CONFIG.COW_PRE_DASH_TIME;
-                    } else {
-                        cow.isHealing = true;
-                        cow.isStunned = true;
-                        cow.healStartTime = now;
-                        cow.healLastTime = now;
-                        cow.stunEndTime = now + CONFIG.COW_HEAL_DURATION;
-                        spawnFloatingText(cow.x, cow.y - 40, '자가 회복 중...', '#69f0ae');
-                    }
-                } else if (!isPhase2) {
-                    // 1페이즈: 일반 돌진 5 : 닭 소환 1
-                    const roll = Math.random() * 6;
-                    if (roll < 5 || chickens.length >= CONFIG.MAX_CHICKENS) {
-                        cow.isPreDashing = true;
-                        cow.isChainDashing = false;
-                        cow.isWallBounceDash = false;
-                        cow.bouncesLeft = 0;
-                        cow.preDashEndTime = now + CONFIG.COW_PRE_DASH_TIME;
-                    } else {
-                        summonNormalChickens();
-                        cow.isStunned = true;
-                        cow.stunEndTime = now + CONFIG.COW_CHICKEN_WAIT_TIME;
-                    }
-                } else {
-                    // 2페이즈: 벽 반사 돌진 2 : 빨간 닭 1 : 무지성 연쇄 돌진 5
-                    const roll = Math.random() * 8;
-                    if (roll < 2) {
-                        cow.isPreDashing = true;
-                        cow.isChainDashing = false;
-                        cow.isWallBounceDash = true;
-                        cow.bouncesLeft = CONFIG.COW_NORMAL_BOUNCES;
-                        cow.preDashEndTime = now + CONFIG.COW_PRE_DASH_TIME;
-                    } else if (roll < 3 && chickens.length < CONFIG.MAX_CHICKENS) {
-                        summonRedChickensBurst(0);
-                        cow.redChickenSecondBurstTime = now + 450;
-                        cow.isStunned = true;
-                        cow.stunEndTime = now + CONFIG.COW_CHICKEN_WAIT_TIME;
-                    } else {
-                        cow.isPreDashing = true;
-                        cow.isChainDashing = true;
-                        cow.isWallBounceDash = true;
-                        cow.bouncesLeft = CONFIG.COW_CHAIN_MAX_BOUNCES;
-                        cow.preDashEndTime = now + CONFIG.COW_PRE_DASH_TIME;
-                    }
-                }
-            }
-        }
-
-        // 플레이어와 소 충돌 판정 (소가 기절/점프 중이거나 플레이어가 밧줄 회전 중일 때는 안전)
-        if (!cow.isStunned && !cow.isJumping && !player.isOrbiting &&
-            dist(player.x, player.y, cow.x, cow.y) < player.radius + cow.radius - 4) {
-            triggerGameOver();
-            return;
-        }
-    }
-
-    // 4) 3페이즈 점프 충격파 업데이트
-    for (let i = shockwaves.length - 1; i >= 0; i--) {
-        const sw = shockwaves[i];
-        sw.radius += CONFIG.SHOCKWAVE_SPEED;
-
-        if (!sw.hitPlayer && !player.isDashing) {
-            const d = dist(player.x, player.y, sw.x, sw.y);
-            if (Math.abs(d - sw.radius) < player.radius + 10) {
-                sw.hitPlayer = true;
-                player.isStunned = true;
-                player.isOrbiting = false;
-                player.stunEndTime = now + CONFIG.PLAYER_STUN_DURATION;
-            }
-        }
-
-        if (sw.radius >= sw.maxRadius) {
-            shockwaves.splice(i, 1);
-        }
-    }
-
-    // 4-2) 모래/먼지 구름 업데이트 (2초 뒤 소멸)
-    for (let i = dustClouds.length - 1; i >= 0; i--) {
-        const dc = dustClouds[i];
-        dc.x += dc.vx;
-        dc.y += dc.vy;
-        if (now - dc.createdAt >= CONFIG.DUST_CLOUD_DURATION) {
-            dustClouds.splice(i, 1);
-        }
-    }
-
-    // 5) 통통 튕기는 닭 업데이트
-    for (let i = chickens.length - 1; i >= 0; i--) {
-        const c = chickens[i];
-        c.x += c.vx;
-        c.y += c.vy;
-
-        // 벽 반사 (화면 이탈 방지)
-        if (c.x <= c.radius) {
-            c.x = c.radius;
-            c.vx = Math.abs(c.vx);
-        } else if (c.x >= canvas.width - c.radius) {
-            c.x = canvas.width - c.radius;
-            c.vx = -Math.abs(c.vx);
-        }
-        if (c.y <= c.radius) {
-            c.y = c.radius;
-            c.vy = Math.abs(c.vy);
-        } else if (c.y >= canvas.height - c.radius) {
-            c.y = canvas.height - c.radius;
-            c.vy = -Math.abs(c.vy);
-        }
-
-        // 바위 반사
-        for (let rIdx = 0; rIdx < rocks.length; rIdx++) {
-            const r = rocks[rIdx];
-            const d = dist(c.x, c.y, r.x, r.y);
-            if (d < c.radius + r.radius && d > 0) {
-                const nx = (c.x - r.x) / d;
-                const ny = (c.y - r.y) / d;
-                c.x = r.x + nx * (c.radius + r.radius);
-                c.y = r.y + ny * (c.radius + r.radius);
-                const dot = c.vx * nx + c.vy * ny;
-                c.vx -= 2 * dot * nx;
-                c.vy -= 2 * dot * ny;
-            }
-        }
-
-        // 플레이어 충돌 시 0.75초 기절 + 닭 자폭 제거
-        if (dist(player.x, player.y, c.x, c.y) < player.radius + c.radius - 2) {
-            player.isStunned = true;
-            player.isOrbiting = false;
-            player.stunEndTime = now + CONFIG.PLAYER_STUN_DURATION;
-            chickens.splice(i, 1);
-        }
-    }
-
-    // 6) 바닥 짱돌 슬라이딩(마찰력) 및 획득 업데이트
-    for (let i = droppedStones.length - 1; i >= 0; i--) {
-        const s = droppedStones[i];
-        s.x += s.vx;
-        s.y += s.vy;
-        s.vx *= 0.92;
-        s.vy *= 0.92;
-        if (Math.hypot(s.vx, s.vy) < 0.08) {
-            s.vx = 0;
-            s.vy = 0;
-        }
-
-        // 맵 경계 안에 유지
-        if (s.x < s.radius) { s.x = s.radius; s.vx = Math.abs(s.vx) * 0.5; }
-        if (s.x > canvas.width - s.radius) { s.x = canvas.width - s.radius; s.vx = -Math.abs(s.vx) * 0.5; }
-        if (s.y < s.radius) { s.y = s.radius; s.vy = Math.abs(s.vy) * 0.5; }
-        if (s.y > canvas.height - s.radius) { s.y = canvas.height - s.radius; s.vy = -Math.abs(s.vy) * 0.5; }
-
-        // 플레이어 획득 판정
-        if (dist(player.x, player.y, s.x, s.y) < CONFIG.PICKUP_RANGE) {
-            const emptyIdx = inventory.indexOf(null);
-            if (emptyIdx !== -1) {
-                inventory[emptyIdx] = 'stone';
-                droppedStones.splice(i, 1);
-            }
-        }
-    }
-
-    // 7) 투사체(짱돌, 새총 탄환) 업데이트
-    for (let i = projectiles.length - 1; i >= 0; i--) {
-        const p = projectiles[i];
-        p.x += p.vx;
-        p.y += p.vy;
-
-        // 화면 밖 이탈 시 제거
-        if (p.x < -20 || p.x > canvas.width + 20 || p.y < -20 || p.y > canvas.height + 20) {
-            projectiles.splice(i, 1);
-            continue;
-        }
-
-        // 바위에 막힘
-        let hitRock = false;
-        for (let rIdx = 0; rIdx < rocks.length; rIdx++) {
-            if (dist(p.x, p.y, rocks[rIdx].x, rocks[rIdx].y) < p.radius + rocks[rIdx].radius) {
-                hitRock = true;
-                break;
-            }
-        }
-        if (hitRock) {
-            projectiles.splice(i, 1);
-            continue;
-        }
-
-        // 닭 피격 체크
-        let hitChicken = false;
-        for (let cIdx = chickens.length - 1; cIdx >= 0; cIdx--) {
-            const c = chickens[cIdx];
-            if (dist(p.x, p.y, c.x, c.y) < p.radius + c.radius) {
-                spawnFloatingText(c.x, c.y - 20, '떼치!');
-                chickens.splice(cIdx, 1);
-                hitChicken = true;
-                break;
-            }
-        }
-        if (hitChicken) {
-            projectiles.splice(i, 1);
-            continue;
-        }
-
-        // 소 피격 체크
-        if (cow.hp > 0 && dist(p.x, p.y, cow.x, cow.y) < p.radius + cow.radius) {
-            const dmg = p.damage !== undefined ? p.damage : CONFIG.STONE_DAMAGE;
-            cow.hp = Math.max(0, cow.hp - dmg);
-            spawnFloatingText(cow.x, cow.y - 30, '떼치!');
-            projectiles.splice(i, 1);
-            if (cow.hp <= 0) {
-                triggerGameClear();
-                return;
-            }
-            continue;
-        }
-    }
-
-    // 8) 떠오르는 타격 텍스트 업데이트
-    for (let i = floatingTexts.length - 1; i >= 0; i--) {
-        const ft = floatingTexts[i];
-        ft.y += ft.vy;
-        ft.alpha -= 0.025;
-        if (ft.alpha <= 0) {
-            floatingTexts.splice(i, 1);
-        }
-    }
-}
-
-// ==========================================
-// 8. 메인 렌더링 로직
-// ==========================================
-function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // 배경 잔디
-    ctx.fillStyle = '#8bc34a';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    if (gameState === 'START') return;
 
     ctx.save();
-    // 보스 등장 3초 동안 화면 강하게 덜덜덜 흔들림
-    if (gameState === 'BOSS_INTRO') {
-        const shakeX = (Math.random() - 0.5) * 16;
-        const shakeY = (Math.random() - 0.5) * 16;
-        ctx.translate(shakeX, shakeY);
+    ctx.translate(this.x, this.y);
+
+    if (this.isRopeGrappled && boss) {
+      ctx.save();
+      ctx.strokeStyle = '#d7ccc8';
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(boss.x - this.x, boss.y - this.y);
+      ctx.stroke();
+      ctx.restore();
     }
 
-    // 1) 돌진 경고 직사각형 인디케이터 (소가 덜덜 떨 때 표시)
-    if (cow && cow.hp > 0 && cow.isPreDashing) {
-        const warnLen = cow.isWallBounceDash
-            ? 1200
-            : dist(cow.x, cow.y, cow.dashTargetX, cow.dashTargetY);
-        ctx.save();
-        ctx.translate(cow.x, cow.y);
-        ctx.rotate(cow.dashAngle);
-        ctx.fillStyle = cow.isDustDashing ? 'rgba(218, 165, 80, 0.35)' : 'rgba(255, 40, 40, 0.28)';
-        ctx.fillRect(0, -cow.radius, warnLen, cow.radius * 2);
-        ctx.strokeStyle = cow.isDustDashing ? 'rgba(235, 185, 95, 0.85)' : 'rgba(255, 60, 60, 0.75)';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(0, -cow.radius, warnLen, cow.radius * 2);
-        ctx.restore();
+    if (this.dashCdTimer > 0) {
+      const pct = 1 - (this.dashCdTimer / this.dashCooldown);
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.fillRect(-18, 25, 36, 5);
+      ctx.fillStyle = '#29b6f6';
+      ctx.fillRect(-18, 25, 36 * pct, 5);
+    }
+    if (this.isRopeGrappled) {
+      const pct = this.ropeTimer / 3.0;
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.fillRect(-22, 33, 44, 6);
+      ctx.fillStyle = '#ff9800';
+      ctx.fillRect(-22, 33, 44 * pct, 6);
     }
 
-    // 2) 바위(장애물) 렌더링
-    rocks.forEach(r => {
-        ctx.save();
-        ctx.translate(r.x, r.y);
-        // 바위 외곽
-        ctx.fillStyle = '#2e2e2e';
-        ctx.beginPath();
-        ctx.arc(0, 0, r.radius, 0, Math.PI * 2);
-        ctx.fill();
-        // 바위 본체
-        ctx.fillStyle = '#4a4a4a';
-        ctx.beginPath();
-        ctx.arc(0, 0, r.radius - 3, 0, Math.PI * 2);
-        ctx.fill();
-        // 하이라이트
-        ctx.fillStyle = '#666666';
-        ctx.beginPath();
-        ctx.arc(-r.radius * 0.28, -r.radius * 0.25, r.radius * 0.35, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-    });
+    ctx.rotate(this.aimAngle);
+    this.drawDuckBody(ctx);
+    ctx.restore();
 
-    // 3) 바닥 짱돌 렌더링
-    droppedStones.forEach(s => {
-        ctx.save();
-        ctx.translate(s.x, s.y);
-        ctx.strokeStyle = '#fdd835';
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        ctx.ellipse(0, 6, s.radius + 4, (s.radius + 4) * 0.55, 0, 0, Math.PI * 2);
-        ctx.stroke();
-
-        ctx.fillStyle = '#555555';
-        ctx.beginPath();
-        ctx.arc(0, 0, s.radius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-    });
-
-    // 3-2) 3페이즈 바닥 밧줄 아이템 렌더링
-    if (droppedRope) {
-        ctx.save();
-        ctx.translate(droppedRope.x, droppedRope.y);
-        const pulse = 1 + Math.sin(Date.now() / 180) * 0.12;
-        ctx.scale(pulse, pulse);
-
-        ctx.strokeStyle = '#ffd54f';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.arc(0, 0, droppedRope.radius + 6, 0, Math.PI * 2);
-        ctx.stroke();
-
-        ctx.strokeStyle = '#a1662f';
-        ctx.lineWidth = 4.5;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, 12, 8, -0.3, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.strokeStyle = '#d7a86e';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, 7, 4.5, -0.3, 0, Math.PI * 2);
-        ctx.stroke();
-
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 13px "Courier New", monospace';
+    if (this.stunTimer > 0) {
+      ctx.save();
+      ctx.translate(this.x, this.y - 32);
+      for (let i = 0; i < 3; i++) {
+        const a = this.stunStarsAngle + (i * Math.PI * 2 / 3);
+        const sx = Math.cos(a) * 16;
+        const sy = Math.sin(a) * 7;
+        ctx.fillStyle = '#ffee58';
+        ctx.font = '16px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('밧줄', 0, -24);
-        ctx.restore();
+        ctx.textBaseline = 'middle';
+        ctx.fillText('✦', sx, sy);
+      }
+      ctx.restore();
+    }
+  }
+
+  drawDuckBody(ctx, isGhost = false) {
+    if (!isGhost) {
+      ctx.beginPath();
+      ctx.ellipse(-2, 4, 18, 12, 0, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0,0,0,0.2)';
+      ctx.fill();
     }
 
-    // 3-3) 3페이즈 점프 충격파 렌더링
-    shockwaves.forEach(sw => {
-        const alpha = Math.max(0, 1 - sw.radius / sw.maxRadius);
-        ctx.save();
-        ctx.strokeStyle = `rgba(255, 90, 20, ${alpha * 0.9})`;
-        ctx.lineWidth = 14;
-        ctx.beginPath();
-        ctx.arc(sw.x, sw.y, sw.radius, 0, Math.PI * 2);
-        ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 20, 16, 0, 0, Math.PI * 2);
+    ctx.fillStyle = isGhost ? '#81d4fa' : '#fdd835';
+    ctx.fill();
+    ctx.strokeStyle = isGhost ? '#29b6f6' : '#f57f17';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
 
-        ctx.strokeStyle = `rgba(255, 220, 80, ${alpha})`;
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.arc(sw.x, sw.y, sw.radius, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
-    });
+    ctx.beginPath();
+    ctx.ellipse(-6, -6, 10, 6, -0.2, 0, Math.PI * 2);
+    ctx.fillStyle = isGhost ? '#b3e5fc' : '#fbc02d';
+    ctx.fill();
 
-    // 4) 통통 튕기는 닭 렌더링
-    const timeSec = Date.now() / 120;
-    chickens.forEach(c => {
-        const hopY = Math.abs(Math.sin(timeSec + c.hopOffset)) * 7;
-        ctx.save();
-        ctx.translate(c.x, c.y - hopY);
+    ctx.beginPath();
+    ctx.moveTo(14, -6);
+    ctx.lineTo(26, 0);
+    ctx.lineTo(14, 6);
+    ctx.closePath();
+    ctx.fillStyle = '#ff9800';
+    ctx.fill();
+    ctx.strokeStyle = '#e65100';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
 
-        // 그림자
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-        ctx.beginPath();
-        ctx.ellipse(0, hopY + 12, 11, 5, 0, 0, Math.PI * 2);
-        ctx.fill();
+    ctx.fillStyle = '#212121';
+    ctx.beginPath();
+    ctx.arc(8, -6, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(9, -7, 1, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
 
-        // 닭 몸통
-        ctx.fillStyle = c.isRed ? '#e53935' : '#fff8e1';
-        ctx.beginPath();
-        ctx.arc(0, 0, c.radius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = c.isRed ? '#8e0000' : '#d7ccc8';
-        ctx.lineWidth = 2;
-        ctx.stroke();
+// ==========================================
+// 6. 보스 기획: 강력한 소
+// ==========================================
+class Boss {
+  constructor() {
+    this.reset();
+  }
 
-        // 닭 벼슬
-        ctx.fillStyle = c.isRed ? '#ffeb3b' : '#d32f2f';
-        ctx.beginPath();
-        ctx.arc(-4, -c.radius, 4, 0, Math.PI * 2);
-        ctx.arc(2, -c.radius - 1, 4.5, 0, Math.PI * 2);
-        ctx.fill();
+  reset() {
+    this.x = 500;
+    this.y = 130;
+    this.radius = 28;
+    this.maxHp = 375;
+    this.hp = 375;
+    this.phase = 1;
 
-        // 부리 및 눈
-        const dir = c.vx < 0 ? -1 : 1;
-        ctx.fillStyle = '#ff9800';
-        ctx.beginPath();
-        ctx.moveTo(dir * c.radius, -2);
-        ctx.lineTo(dir * (c.radius + 7), 2);
-        ctx.lineTo(dir * c.radius, 5);
-        ctx.closePath();
-        ctx.fill();
+    this.state = 'IDLE';
+    this.stateTimer = 0;
+    this.patternCooldown = 2.6;
+    this.actionTimer = 0;
 
-        ctx.fillStyle = '#000000';
-        ctx.beginPath();
-        ctx.arc(dir * 6, -3, 2.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-    });
+    this.rushSpeed = 10.5 * 60;
+    this.rushDirX = 0;
+    this.rushDirY = 0;
+    this.targetX = 0;
+    this.targetY = 0;
+    this.bouncesLeft = 0;
+    this.rushType = 'normal';
 
-    // 5) 던진 짱돌 및 새총 탄환(투사체) 렌더링
-    projectiles.forEach(p => {
-        ctx.fillStyle = p.isPellet ? '#ffd54f' : '#424242';
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-        ctx.fill();
-        if (p.isPellet) {
-            ctx.strokeStyle = '#795548';
-            ctx.lineWidth = 1.5;
-            ctx.stroke();
-        }
-    });
+    this.jumpZ = 0;
+    this.isAirborne = false;
+    this.healProgress = 0;
 
-    // 5-2) 발사 중이거나 소에 걸린 밧줄 렌더링
-    if (player && (activeRope || (player.isOrbiting && cow && cow.hp > 0))) {
-        const endX = activeRope ? activeRope.x : cow.x;
-        const endY = activeRope ? activeRope.y : (cow.y - cow.jumpHeight);
-        ctx.save();
-        ctx.strokeStyle = '#8d5524';
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.moveTo(player.x, player.y);
-        ctx.lineTo(endX, endY);
-        ctx.stroke();
+    this.telegraphType = 'red';
+    this.telegraphAngle = 0;
+    this.shivering = false;
+    this.facingAngle = Math.PI / 2;
 
-        ctx.strokeStyle = '#d7a86e';
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([6, 6]);
-        ctx.beginPath();
-        ctx.moveTo(player.x, player.y);
-        ctx.lineTo(endX, endY);
-        ctx.stroke();
-        ctx.setLineDash([]);
+    this.flashTimer = 0;
+  }
 
-        if (activeRope) {
-            ctx.strokeStyle = '#a1662f';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.arc(activeRope.x, activeRope.y, 10, 0, Math.PI * 2);
-            ctx.stroke();
-        }
-        ctx.restore();
+  get isSafeContact() {
+    return this.state === 'STUNNED' || this.state === 'HEAL_STUN' || this.isAirborne;
+  }
+
+  takeDamage(amount) {
+    this.hp = Math.max(0, this.hp - amount);
+    this.flashTimer = 0.12;
+    audio.playTtachi();
+    game.addText('떼치!', this.x + (Math.random() - 0.5) * 20, this.y - 30, '#ffeb3b', 22);
+
+    if (this.phase === 1 && this.hp <= 300) {
+      this.enterPhase2();
+    } else if (this.phase === 2 && this.hp <= 187.5) {
+      this.enterPhase3();
     }
 
-    // 6) 보스(소) 렌더링
-    if (cow && cow.hp > 0) {
-        // 점프 시 바닥 그림자 표시
-        if (cow.isJumping) {
-            const shadowScale = Math.max(0.4, 1 - cow.jumpHeight / 200);
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
-            ctx.beginPath();
-            ctx.ellipse(cow.x, cow.y + 12, cow.radius * shadowScale, cow.radius * 0.55 * shadowScale, 0, 0, Math.PI * 2);
-            ctx.fill();
-        }
+    if (this.hp <= 0) {
+      game.triggerClear();
+    }
+  }
 
-        ctx.save();
-        let shakeX = 0;
-        let shakeY = 0;
-        if (cow.isPreDashing) {
-            shakeX = (Math.random() - 0.5) * 10;
-            shakeY = (Math.random() - 0.5) * 10;
-        }
-        const jumpScale = cow.isJumping ? 1 + (cow.jumpHeight / 300) : 1;
-        ctx.translate(cow.x + shakeX, cow.y - cow.jumpHeight + shakeY);
-        ctx.scale(jumpScale, jumpScale);
+  enterPhase2() {
+    this.phase = 2;
+    this.patternCooldown = 1.4;
+    audio.startBGM(2);
+    game.shakeScreen(0.5, 12);
+    game.showBanner('2페이즈 돌입!');
+  }
 
-        // 2페이즈/3페이즈 발동 시 오라 효과
-        if (cow.isHealing) {
-            ctx.fillStyle = 'rgba(105, 240, 174, 0.32)';
-            ctx.beginPath();
-            ctx.arc(0, 0, 40 + Math.sin(Date.now() / 120) * 5, 0, Math.PI * 2);
-            ctx.fill();
-        } else if (cow.phase3Entered && !cow.isStunned) {
-            ctx.fillStyle = 'rgba(180, 30, 220, 0.28)';
-            ctx.beginPath();
-            ctx.arc(0, 0, 38 + (Math.random() * 6), 0, Math.PI * 2);
-            ctx.fill();
-        } else if (cow.hp <= CONFIG.COW_PHASE2_HP && !cow.isStunned) {
-            ctx.fillStyle = 'rgba(255, 50, 50, 0.25)';
-            ctx.beginPath();
-            ctx.arc(0, 0, 35 + (Math.random() * 5), 0, Math.PI * 2);
-            ctx.fill();
-        }
+  enterPhase3() {
+    this.phase = 3;
+    this.patternCooldown = 1.4;
+    audio.startBGM(3);
+    game.shakeScreen(0.8, 16);
+    game.showBanner('3페이즈 돌입!');
+    game.clearForPhase3();
+  }
 
-        // 소 뿔
-        ctx.fillStyle = '#e0e0e0';
-        ctx.beginPath();
-        ctx.moveTo(-18, -14);
-        ctx.lineTo(-27, -34);
-        ctx.lineTo(-8, -22);
-        ctx.closePath();
-        ctx.fill();
+  setPhaseCheat(phaseNum) {
+    audio.init();
+    if (phaseNum === 1) {
+      this.phase = 1;
+      this.hp = 375;
+      this.patternCooldown = 2.6;
+      audio.startBGM(1);
+      game.resetRocks();
+      game.showBanner('치트: 1페이즈 전환');
+    } else if (phaseNum === 2) {
+      this.phase = 2;
+      this.hp = 300;
+      this.patternCooldown = 1.4;
+      audio.startBGM(2);
+      game.showBanner('치트: 2페이즈 전환');
+    } else if (phaseNum === 3) {
+      this.hp = 187;
+      this.enterPhase3();
+    }
+  }
 
-        ctx.beginPath();
-        ctx.moveTo(18, -14);
-        ctx.lineTo(27, -34);
-        ctx.lineTo(8, -22);
-        ctx.closePath();
-        ctx.fill();
+  update(dt, player, rocks) {
+    this.actionTimer += dt;
+    if (this.flashTimer > 0) this.flashTimer -= dt;
 
-        // 소 얼굴
-        ctx.fillStyle = '#8b4513';
-        ctx.beginPath();
-        ctx.arc(0, 0, cow.radius, 0, Math.PI * 2);
-        ctx.fill();
-
-        // 소 코(주둥이)
-        ctx.fillStyle = '#cd853f';
-        ctx.beginPath();
-        ctx.ellipse(0, 10, 14, 9, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // 소 눈 (기절/대기 중일 때는 회색, 돌진 시 붉은색, 평소 검은색)
-        if (cow.isStunned) {
-            ctx.fillStyle = '#9e9e9e';
-        } else if (cow.isDashing || cow.isPreDashing) {
-            ctx.fillStyle = '#ff1744';
-        } else {
-            ctx.fillStyle = '#000000';
-        }
-        ctx.beginPath();
-        ctx.arc(-10, -5, 4.5, 0, Math.PI * 2);
-        ctx.arc(10, -5, 4.5, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.restore();
-
-        // 자가 회복 진행 게이지 (2.5초)
-        if (cow.isHealing) {
-            const healProgress = Math.min(1, (Date.now() - cow.healStartTime) / CONFIG.COW_HEAL_DURATION);
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-            ctx.beginPath();
-            ctx.roundRect(cow.x - 28, cow.y + cow.radius + 10, 56, 7, 3);
-            ctx.fill();
-            ctx.fillStyle = '#69f0ae';
-            ctx.beginPath();
-            ctx.roundRect(cow.x - 27, cow.y + cow.radius + 11, 54 * healProgress, 5, 2);
-            ctx.fill();
-        }
+    if (this.state === 'IDLE' || this.state === 'TELEGRAPH') {
+      this.facingAngle = Math.atan2(player.y - this.y, player.x - this.x);
     }
 
-    // 7) 플레이어 대쉬 잔상 렌더링
-    playerTrails.forEach(t => {
-        ctx.save();
-        ctx.fillStyle = `rgba(255, 235, 59, ${t.alpha})`;
-        ctx.beginPath();
-        ctx.arc(t.x, t.y, player.radius * 0.9, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-    });
+    switch (this.state) {
+      case 'IDLE':
+        this.updateIdle(dt, player);
+        break;
+      case 'TELEGRAPH':
+        this.updateTelegraph(dt, player);
+        break;
+      case 'RUSH':
+        this.updateRush(dt, player, rocks);
+        break;
+      case 'JUMP':
+        this.updateJump(dt, player);
+        break;
+      case 'HEAL_STUN':
+        this.updateHealStun(dt);
+        break;
+      case 'STUNNED':
+        this.updateStunned(dt);
+        break;
+      case 'POST_WAIT':
+        this.updatePostWait(dt);
+        break;
+    }
+  }
 
-    // 8) 플레이어(오리) 렌더링
-    if (player) {
-        ctx.save();
-        ctx.translate(player.x, player.y);
-        if (player.flip) ctx.scale(-1, 1);
+  updateIdle(dt, player) {
+    const norm = V.normalize(player.x - this.x, player.y - this.y);
+    const chaseSpeed = 1.6 * 60;
+    this.x += norm.x * chaseSpeed * dt;
+    this.y += norm.y * chaseSpeed * dt;
 
-        // 오리 몸통
-        ctx.fillStyle = '#ffeb3b';
-        ctx.beginPath();
-        ctx.arc(0, 0, player.radius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#f57f17';
-        ctx.lineWidth = 2;
-        ctx.stroke();
+    if (this.actionTimer >= this.patternCooldown) {
+      this.pickNextPattern(player);
+    }
+  }
 
-        // 오리 날개
-        ctx.fillStyle = '#fdd835';
-        ctx.beginPath();
-        ctx.ellipse(-4, 4, 10, 6, -0.2, 0, Math.PI * 2);
-        ctx.fill();
+  pickNextPattern(player) {
+    this.actionTimer = 0;
 
-        // 오리 부리
-        ctx.fillStyle = '#ff6f00';
-        ctx.beginPath();
-        ctx.ellipse(player.radius - 2, 2, 9, 5, 0, 0, Math.PI * 2);
-        ctx.fill();
+    if (this.phase === 1) {
+      const rand = Math.random() * 6;
+      if (rand < 5) {
+        this.startTelegraph(player, 'normal');
+      } else {
+        this.spawnChickens(3, 'white');
+        this.state = 'POST_WAIT';
+        this.stateTimer = 1.5;
+      }
+    } else if (this.phase === 2) {
+      const rand = Math.random() * 8;
+      if (rand < 2) {
+        this.startTelegraph(player, 'bounce', 3);
+      } else if (rand < 3) {
+        this.fireRedChickenDouble();
+        this.state = 'POST_WAIT';
+        this.stateTimer = 1.5;
+      } else {
+        this.startTelegraph(player, 'crazy', 8);
+      }
+    } else {
+      const rand = Math.random() * 9.5;
+      if (rand < 2) {
+        this.startTelegraph(player, 'bounce', 3);
+      } else if (rand < 4) {
+        this.startJump();
+      } else if (rand < 6) {
+        this.startTelegraph(player, 'crazy', 8);
+      } else if (rand < 8) {
+        this.startTelegraph(player, 'dust');
+      } else {
+        this.startHealStun();
+      }
+    }
+  }
 
-        // 오리 눈
-        ctx.fillStyle = '#000000';
-        ctx.beginPath();
-        ctx.arc(7, -5, 3, 0, Math.PI * 2);
-        ctx.fill();
+  startTelegraph(player, rushType, bounces = 0) {
+    this.state = 'TELEGRAPH';
+    this.stateTimer = 0.8;
+    this.rushType = rushType;
+    this.bouncesLeft = bounces;
+    this.targetX = player.x;
+    this.targetY = player.y;
+    this.telegraphType = rushType === 'dust' ? 'dust' : 'red';
+    this.telegraphAngle = Math.atan2(player.y - this.y, player.x - this.x);
+    this.shivering = true;
+    audio.playWarning();
+  }
 
-        ctx.restore();
+  updateTelegraph(dt, player) {
+    this.stateTimer -= dt;
+    if (this.stateTimer <= 0) {
+      this.shivering = false;
+      this.state = 'RUSH';
+      const dir = V.normalize(this.targetX - this.x, this.targetY - this.y);
+      let mult = 1.0;
+      if (this.rushType === 'crazy') mult = 1.8;
+      this.rushSpeed = 10.5 * 60 * mult;
+      this.rushDirX = dir.x;
+      this.rushDirY = dir.y;
 
-        // 기절 시 머리 위에 회전하는 별 3개
-        if (player.isStunned) {
-            const starBaseAngle = Date.now() / 160;
-            for (let i = 0; i < 3; i++) {
-                const a = starBaseAngle + (Math.PI * 2 / 3) * i;
-                const sx = player.x + Math.cos(a) * 18;
-                const sy = player.y - player.radius - 12 + Math.sin(a) * 6;
-                ctx.fillStyle = '#ffeb3b';
-                ctx.strokeStyle = '#ff9800';
-                ctx.lineWidth = 1;
-                ctx.font = 'bold 14px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText('★', sx, sy);
-            }
+      if (this.rushType === 'dust') {
+        const dist = V.dist(this.x, this.y, this.targetX, this.targetY);
+        this.targetDistLeft = dist * 2;
+      }
+    }
+  }
+
+  updateRush(dt, player, rocks) {
+    const step = this.rushSpeed * dt;
+    this.x += this.rushDirX * step;
+    this.y += this.rushDirY * step;
+
+    if (this.rushType === 'dust') {
+      if (Math.random() < 0.65) {
+        game.dustClouds.push(new DustCloud(this.x, this.y));
+      }
+      this.targetDistLeft -= step;
+      if (this.targetDistLeft <= 0) {
+        for (let i = 0; i < 5; i++) {
+          game.dustClouds.push(new DustCloud(this.x + (Math.random()-0.5)*40, this.y + (Math.random()-0.5)*40));
         }
-
-        // 대쉬 쿨타임 표시 바
-        const dashRemain = player.dashCooldownEnd - Date.now();
-        if (dashRemain > 0) {
-            const dashRatio = 1 - Math.min(1, dashRemain / CONFIG.PLAYER_DASH_COOLDOWN);
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-            ctx.beginPath(); ctx.roundRect(player.x - 18, player.y + 24, 36, 5, 2); ctx.fill();
-            ctx.fillStyle = '#4fc3f7';
-            ctx.beginPath(); ctx.roundRect(player.x - 17, player.y + 25, 34 * dashRatio, 3, 1); ctx.fill();
-        }
-
-        // 밧줄 회전 남은 시간 게이지 (3초)
-        if (player.isOrbiting) {
-            const orbitRemain = Math.max(0, player.orbitEndTime - Date.now());
-            const orbitRatio = orbitRemain / CONFIG.ROPE_ORBIT_DURATION;
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-            ctx.beginPath(); ctx.roundRect(player.x - 20, player.y + 32, 40, 6, 2); ctx.fill();
-            ctx.fillStyle = '#ffb74d';
-            ctx.beginPath(); ctx.roundRect(player.x - 19, player.y + 33, 38 * orbitRatio, 4, 1); ctx.fill();
-        }
+        this.state = 'POST_WAIT';
+        this.stateTimer = 0.5;
+        return;
+      }
     }
 
-    // 8-2) 모래/먼지 구름 렌더링 (플레이어와 소 위에 그려서 시야를 완전히 가림)
-    const nowDraw = Date.now();
-    dustClouds.forEach(dc => {
-        const age = nowDraw - dc.createdAt;
-        const remain = CONFIG.DUST_CLOUD_DURATION - age;
-        const fadeAlpha = remain < 400 ? Math.max(0, remain / 400) : 1;
+    if (this.phase <= 2) {
+      for (const rock of rocks) {
+        if (!rock.alive) continue;
+        const d = V.dist(this.x, this.y, rock.x, rock.y);
+        if (d < this.radius + rock.radius) {
+          rock.hit();
+          if (this.phase === 1) {
+            this.state = 'STUNNED';
+            this.stateTimer = 1.0;
+            audio.playCrash(false);
+            const norm = V.normalize(this.x - rock.x, this.y - rock.y);
+            game.rockDrops.push(new RockDrop(rock.x + norm.x * 35, rock.y + norm.y * 35, norm.x * 240, norm.y * 240));
+            game.shakeScreen(0.35, 9);
+            game.addText('쿵!', this.x, this.y - 25, '#fff', 20);
+            return;
+          } else if (this.phase === 2) {
+            rock.alive = false;
+            this.state = 'STUNNED';
+            this.stateTimer = 1.0;
+            audio.playCrash(true);
+            game.shakeScreen(0.55, 15);
+            game.addText('와장창!', rock.x, rock.y, '#ff5252', 26);
+            game.spawnRockDebris(rock.x, rock.y);
 
-        ctx.save();
-        ctx.globalAlpha = fadeAlpha * 0.96;
-        ctx.fillStyle = dc.shade > 0.5 ? '#c8ad7f' : '#b59666';
-        ctx.beginPath();
-        ctx.arc(dc.x, dc.y, dc.radius, 0, Math.PI * 2);
-        ctx.fill();
+            const norm = V.normalize(this.x - rock.x, this.y - rock.y);
+            game.rockDrops.push(new RockDrop(rock.x + norm.x * 35, rock.y + norm.y * 35, norm.x * 250, norm.y * 250));
+            game.rockDrops.push(new RockDrop(rock.x - norm.y * 35, rock.y + norm.x * 35, -norm.y * 220, norm.x * 220));
+            return;
+          }
+        }
+      }
+    }
 
-        ctx.fillStyle = dc.shade > 0.5 ? '#d8c096' : '#c6a97b';
-        ctx.beginPath();
-        ctx.arc(dc.x - dc.radius * 0.25, dc.y - dc.radius * 0.2, dc.radius * 0.65, 0, Math.PI * 2);
-        ctx.fill();
+    let collidedWall = false;
+    if (this.x - this.radius < 0) {
+      this.x = this.radius;
+      this.rushDirX = Math.abs(this.rushDirX);
+      collidedWall = true;
+    } else if (this.x + this.radius > CW) {
+      this.x = CW - this.radius;
+      this.rushDirX = -Math.abs(this.rushDirX);
+      collidedWall = true;
+    }
+    if (this.y - this.radius < 0) {
+      this.y = this.radius;
+      this.rushDirY = Math.abs(this.rushDirY);
+      collidedWall = true;
+    } else if (this.y + this.radius > CH) {
+      this.y = CH - this.radius;
+      this.rushDirY = -Math.abs(this.rushDirY);
+      collidedWall = true;
+    }
 
-        ctx.fillStyle = '#9e7f52';
-        ctx.beginPath();
-        ctx.arc(dc.x + dc.radius * 0.22, dc.y + dc.radius * 0.18, dc.radius * 0.55, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-    });
+    if (collidedWall) {
+      audio.playCrash(false);
+      game.shakeScreen(0.2, 5);
+      if (this.bouncesLeft > 0) {
+        this.bouncesLeft--;
+      } else {
+        this.state = 'POST_WAIT';
+        this.stateTimer = 0.25;
+      }
+    }
 
-    // 9) 떠오르는 텍스트 렌더링
-    floatingTexts.forEach(ft => {
-        ctx.save();
-        ctx.globalAlpha = Math.max(0, ft.alpha);
-        ctx.font = 'bold 20px "Courier New", monospace';
-        ctx.textAlign = 'center';
-        ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 4;
-        ctx.strokeText(ft.text, ft.x, ft.y);
-        ctx.fillStyle = ft.color;
-        ctx.fillText(ft.text, ft.x, ft.y);
-        ctx.restore();
-    });
+    if (this.rushType === 'normal') {
+      const d = V.dist(this.x, this.y, this.targetX, this.targetY);
+      if (d < 30) {
+        this.state = 'POST_WAIT';
+        this.stateTimer = 0.25;
+      }
+    }
+  }
+
+  startJump() {
+    this.state = 'JUMP';
+    this.stateTimer = 0.75;
+    this.jumpZ = 0;
+    this.isAirborne = true;
+  }
+
+  updateJump(dt, player) {
+    this.stateTimer -= dt;
+    const progress = 1 - (this.stateTimer / 0.75);
+    this.jumpZ = Math.sin(progress * Math.PI) * 160;
+
+    if (this.stateTimer <= 0) {
+      this.isAirborne = false;
+      this.jumpZ = 0;
+      audio.playThud();
+      game.shakeScreen(0.65, 18);
+      game.addText('쿵!', this.x, this.y - 20, '#ba68c8', 34);
+
+      game.shockwaves.push(new Shockwave(this.x, this.y));
+
+      this.state = 'POST_WAIT';
+      this.stateTimer = 1.0;
+    }
+  }
+
+  startHealStun() {
+    this.state = 'HEAL_STUN';
+    this.stateTimer = 2.5;
+    this.healProgress = 0;
+  }
+
+  updateHealStun(dt) {
+    this.stateTimer -= dt;
+    this.healProgress = 1 - (this.stateTimer / 2.5);
+
+    if (this.stateTimer <= 0) {
+      const healAmount = this.maxHp * 0.05;
+      this.hp = Math.min(187.5, this.hp + healAmount);
+      game.addText(`+${Math.round(healAmount)} HP`, this.x, this.y - 30, '#4caf50', 22);
+      this.state = 'POST_WAIT';
+      this.stateTimer = 0.35;
+    }
+  }
+
+  updateStunned(dt) {
+    this.stateTimer -= dt;
+    if (this.stateTimer <= 0) {
+      this.state = 'POST_WAIT';
+      this.stateTimer = 0.4;
+    }
+  }
+
+  updatePostWait(dt) {
+    this.stateTimer -= dt;
+    if (this.stateTimer <= 0) {
+      this.state = 'IDLE';
+      this.actionTimer = 0;
+    }
+  }
+
+  spawnChickens(count, type) {
+    audio.playChicken();
+    for (let i = 0; i < count; i++) {
+      if (game.chickens.length >= 9) break;
+      const angle = (Math.PI * 2 / count) * i + Math.random() * 0.5;
+      game.chickens.push(new Chicken(this.x, this.y, type, angle));
+    }
+  }
+
+  fireRedChickenDouble() {
+    this.spawnChickens(4, 'red');
+    setTimeout(() => {
+      if (this.phase === 2) {
+        audio.playChicken();
+        for (let i = 0; i < 4; i++) {
+          if (game.chickens.length >= 9) break;
+          const angle = (Math.PI / 4) + (Math.PI / 2) * i;
+          game.chickens.push(new Chicken(this.x, this.y, 'red', angle));
+        }
+      }
+    }, 450);
+  }
+
+  draw(ctx) {
+    if (this.state === 'TELEGRAPH') {
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      ctx.rotate(this.telegraphAngle);
+      const isDust = this.telegraphType === 'dust';
+      ctx.fillStyle = isDust ? 'rgba(215, 204, 200, 0.35)' : 'rgba(244, 67, 54, 0.35)';
+      ctx.strokeStyle = isDust ? 'rgba(188, 170, 164, 0.75)' : 'rgba(239, 83, 80, 0.75)';
+      ctx.lineWidth = 2.5;
+      const beamLen = isDust ? 920 : 720;
+      ctx.fillRect(0, -this.radius, beamLen, this.radius * 2);
+      ctx.strokeRect(0, -this.radius, beamLen, this.radius * 2);
+      ctx.restore();
+    }
+
+    ctx.save();
+
+    let ox = 0, oy = 0;
+    if (this.shivering) {
+      ox = (Math.random() - 0.5) * 6;
+      oy = (Math.random() - 0.5) * 6;
+    }
+
+    const drawX = this.x + ox;
+    const drawY = this.y + oy - this.jumpZ;
+
+    const shadowScale = Math.max(0.3, 1 - (this.jumpZ / 160) * 0.7);
+    ctx.beginPath();
+    ctx.ellipse(this.x + ox, this.y + oy + 20, this.radius * 1.3 * shadowScale, this.radius * 0.6 * shadowScale, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fill();
+
+    if (this.phase === 2) {
+      ctx.shadowColor = '#f44336';
+      ctx.shadowBlur = 22;
+    } else if (this.phase === 3) {
+      ctx.shadowColor = '#ab47bc';
+      ctx.shadowBlur = 26;
+    }
+
+    ctx.translate(drawX, drawY);
+
+    if (this.state === 'HEAL_STUN') {
+      ctx.beginPath();
+      ctx.arc(0, 0, this.radius + 14, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(76, 175, 80, 0.35)';
+      ctx.fill();
+
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(-24, 34, 48, 6);
+      ctx.fillStyle = '#4caf50';
+      ctx.fillRect(-24, 34, 48 * this.healProgress, 6);
+    }
+
+    ctx.rotate(this.facingAngle);
+
+    const isFlashing = this.flashTimer > 0;
+
+    ctx.beginPath();
+    ctx.ellipse(0, 0, this.radius * 1.15, this.radius * 0.9, 0, 0, Math.PI * 2);
+    ctx.fillStyle = isFlashing ? '#ffffff' : (this.phase === 3 ? '#2d1537' : (this.phase === 2 ? '#4a1212' : '#2b2118'));
+    ctx.fill();
+    ctx.strokeStyle = this.phase === 3 ? '#ba68c8' : (this.phase === 2 ? '#ef5350' : '#8d6e63');
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(12, 0, 16, 0, Math.PI * 2);
+    ctx.fillStyle = isFlashing ? '#ffffff' : (this.phase === 3 ? '#3e1a4d' : (this.phase === 2 ? '#5c1b1b' : '#3e2723'));
+    ctx.fill();
+
+    ctx.fillStyle = '#f5f5f5';
+    ctx.strokeStyle = '#bdbdbd';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(14, -12);
+    ctx.quadraticCurveTo(24, -26, 32, -18);
+    ctx.quadraticCurveTo(20, -10, 14, -6);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(14, 12);
+    ctx.quadraticCurveTo(24, 26, 32, 18);
+    ctx.quadraticCurveTo(20, 10, 14, 6);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#ff1744';
+    ctx.beginPath();
+    ctx.arc(18, -6, 3, 0, Math.PI * 2);
+    ctx.arc(18, 6, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = '#ffd700';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(28, 0, 4.5, 0, Math.PI * 2);
+    ctx.stroke();
 
     ctx.restore();
 
-    // 10) HUD (보스 체력바 & 인벤토리)
-    drawBossHealthBar();
-    drawInventory();
+    if (this.state === 'STUNNED') {
+      ctx.save();
+      ctx.translate(this.x, this.y - 38);
+      for (let i = 0; i < 3; i++) {
+        const a = (Date.now() / 200) + (i * Math.PI * 2 / 3);
+        const sx = Math.cos(a) * 18;
+        const sy = Math.sin(a) * 6;
+        ctx.fillStyle = '#ffee58';
+        ctx.font = '16px sans-serif';
+        ctx.fillText('✦', sx, sy);
+      }
+      ctx.restore();
+    }
+  }
 }
 
-function drawBossHealthBar() {
-    if (!cow) return;
-    const barWidth = 560;
-    const barHeight = 24;
-    const x = (canvas.width - barWidth) / 2;
-    const y = 26;
+// ==========================================
+// 7. 게임 관리자 & 모바일 터치 컨트롤러
+// ==========================================
+class Game {
+  constructor() {
+    this.canvas = document.getElementById('gameCanvas');
+    this.ctx = this.canvas.getContext('2d');
+    this.phaseBanner = document.getElementById('phase-banner');
 
-    let ratio = Math.max(0, cow.hp / cow.maxHp);
-    if (gameState === 'BOSS_INTRO') {
-        ratio = Math.min(1, (Date.now() - bossIntroStartTime) / CONFIG.BOSS_INTRO_DURATION);
+    this.gameState = 'START';
+    this.introTimer = 0;
+    this.gameoverTimer = 0;
+    this.clearTimer = 0;
+
+    this.keys = { w: false, a: false, s: false, d: false, shift: false };
+    this.mouse = { x: 500, y: 350 };
+
+    // 모바일 조이스틱 변수
+    this.touchMoveX = 0;
+    this.touchMoveY = 0;
+    this.isMobileUsingJoystick = false;
+
+    this.shakeDuration = 0;
+    this.shakeMagnitude = 0;
+
+    this.player = new Player();
+    this.boss = new Boss();
+    this.rocks = [];
+    this.rockDrops = [];
+    this.ropeDrops = [];
+    this.projectiles = [];
+    this.ropeShot = null;
+    this.chickens = [];
+    this.shockwaves = [];
+    this.dustClouds = [];
+    this.particles = [];
+    this.texts = [];
+
+    this.lastTime = performance.now();
+
+    this.setupEvents();
+    this.setupTouchControls();
+    this.initEntities();
+  }
+
+  initEntities() {
+    this.rocks = ROCK_COORDS.map(coord => new Rock(coord.x, coord.y));
+    this.rockDrops = [];
+    this.ropeDrops = [];
+    this.projectiles = [];
+    this.ropeShot = null;
+    this.chickens = [];
+    this.shockwaves = [];
+    this.dustClouds = [];
+    this.particles = [];
+    this.texts = [];
+  }
+
+  resetRocks() {
+    this.rocks = ROCK_COORDS.map(coord => new Rock(coord.x, coord.y));
+  }
+
+  clearForPhase3() {
+    this.rocks = [];
+    this.rockDrops = [];
+    this.chickens = [];
+    this.player.slots = [null, null, null, null];
+    this.player.rockCount = 0;
+    this.ropeDrops.push(new RopeDrop(500, 350));
+  }
+
+  setupEvents() {
+    window.addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.shiftKey) {
+        if (e.code === 'Digit1' || e.code === 'Numpad1' || e.key === '!' || e.key === '1') {
+          e.preventDefault();
+          this.boss.setPhaseCheat(1);
+          return;
+        } else if (e.code === 'Digit2' || e.code === 'Numpad2' || e.key === '@' || e.key === '2') {
+          e.preventDefault();
+          this.boss.setPhaseCheat(2);
+          return;
+        } else if (e.code === 'Digit3' || e.code === 'Numpad3' || e.key === '#' || e.key === '3') {
+          e.preventDefault();
+          this.boss.setPhaseCheat(3);
+          return;
+        }
+      }
+
+      const k = e.key.toLowerCase();
+      if (k === 'w' || k === 'arrowup') this.keys.w = true;
+      if (k === 's' || k === 'arrowdown') this.keys.s = true;
+      if (k === 'a' || k === 'arrowleft') this.keys.a = true;
+      if (k === 'd' || k === 'arrowright') this.keys.d = true;
+      if (e.key === 'Shift') this.keys.shift = true;
+
+      if (['1', '2', '3', '4'].includes(e.key)) {
+        this.player.selectedSlot = parseInt(e.key) - 1;
+      }
+
+      this.handleFlowInput();
+    });
+
+    window.addEventListener('keyup', (e) => {
+      const k = e.key.toLowerCase();
+      if (k === 'w' || k === 'arrowup') this.keys.w = false;
+      if (k === 's' || k === 'arrowdown') this.keys.s = false;
+      if (k === 'a' || k === 'arrowleft') this.keys.a = false;
+      if (k === 'd' || k === 'arrowright') this.keys.d = false;
+      if (e.key === 'Shift') this.keys.shift = false;
+    });
+
+    this.canvas.addEventListener('mousemove', (e) => {
+      const rect = this.canvas.getBoundingClientRect();
+      const scaleX = CW / rect.width;
+      const scaleY = CH / rect.height;
+      this.mouse.x = (e.clientX - rect.left) * scaleX;
+      this.mouse.y = (e.clientY - rect.top) * scaleY;
+    });
+
+    this.canvas.addEventListener('mousedown', (e) => {
+      if (e.button === 0) {
+        audio.init();
+        if (this.gameState === 'PLAYING') {
+          // 인벤토리 슬롯 영역 클릭 체크
+          if (this.checkSlotClick(this.mouse.x, this.mouse.y)) return;
+          this.player.useItem(this.mouse, this.boss);
+        } else {
+          this.handleFlowInput();
+        }
+      }
+    });
+
+    window.addEventListener('wheel', (e) => {
+      if (this.gameState === 'PLAYING') {
+        if (e.deltaY > 0) {
+          this.player.selectedSlot = (this.player.selectedSlot + 1) % 4;
+        } else if (e.deltaY < 0) {
+          this.player.selectedSlot = (this.player.selectedSlot + 3) % 4;
+        }
+      }
+    }, { passive: true });
+  }
+
+  // 인벤토리 슬롯 터치/클릭 확인
+  checkSlotClick(x, y) {
+    const slotCount = 4;
+    const slotSize = 56;
+    const gap = 12;
+    const totalW = slotCount * slotSize + (slotCount - 1) * gap;
+    const startX = (CW - totalW) / 2;
+    const startY = CH - slotSize - 20;
+
+    if (y >= startY && y <= startY + slotSize) {
+      for (let i = 0; i < slotCount; i++) {
+        const sx = startX + i * (slotSize + gap);
+        if (x >= sx && x <= sx + slotSize) {
+          this.player.selectedSlot = i;
+          audio.playTone(550, 'sine', 0.08, 0.2, 0.01);
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  // ==========================================
+  // 모바일 멀티터치 가상 조이스틱 & 액션 버튼 시스템
+  // ==========================================
+  setupTouchControls() {
+    const joyZone = document.getElementById('joystick-zone');
+    const joyKnob = document.getElementById('joystick-knob');
+    const btnAttack = document.getElementById('btn-attack');
+    const btnDash = document.getElementById('btn-dash');
+
+    let joyTouchId = null;
+    let joyBaseCenterX = 0;
+    let joyBaseCenterY = 0;
+    const maxRadius = 45;
+
+    // 조이스틱 터치 이벤트
+    joyZone.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      audio.init();
+      if (joyTouchId === null) {
+        const t = e.changedTouches[0];
+        joyTouchId = t.identifier;
+        const rect = joyZone.getBoundingClientRect();
+        joyBaseCenterX = rect.left + rect.width / 2;
+        joyBaseCenterY = rect.top + rect.height / 2;
+        this.updateJoystick(t.clientX, t.clientY, joyBaseCenterX, joyBaseCenterY, maxRadius, joyKnob);
+      }
+    }, { passive: false });
+
+    window.addEventListener('touchmove', (e) => {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        if (t.identifier === joyTouchId) {
+          e.preventDefault();
+          this.updateJoystick(t.clientX, t.clientY, joyBaseCenterX, joyBaseCenterY, maxRadius, joyKnob);
+        }
+      }
+    }, { passive: false });
+
+    const endJoy = (e) => {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        if (t.identifier === joyTouchId) {
+          joyTouchId = null;
+          this.touchMoveX = 0;
+          this.touchMoveY = 0;
+          this.isMobileUsingJoystick = false;
+          joyKnob.style.transform = 'translate(0px, 0px)';
+        }
+      }
+    };
+    window.addEventListener('touchend', endJoy, { passive: true });
+    window.addEventListener('touchcancel', endJoy, { passive: true });
+
+    // 공격 버튼 터치 이벤트
+    btnAttack.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      audio.init();
+      if (this.gameState === 'PLAYING') {
+        // 스마트 오토 에임: 보스 위치 조준 or 현재 바라보는 각도
+        let targetPos = { x: this.boss.x, y: this.boss.y };
+        if (this.player.aimAngle !== 0) {
+          this.mouse.x = targetPos.x;
+          this.mouse.y = targetPos.y;
+        }
+        this.player.useItem(targetPos, this.boss);
+      } else {
+        this.handleFlowInput();
+      }
+    }, { passive: false });
+
+    // 대쉬 버튼 터치 이벤트
+    btnDash.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      audio.init();
+      if (this.gameState === 'PLAYING') {
+        this.player.triggerDash(this.touchMoveX, this.touchMoveY);
+      }
+    }, { passive: false });
+
+    // 캔버스 자체 터치 (화면 터치로도 조준 및 공격 / 슬롯 전환 / 시작 등)
+    this.canvas.addEventListener('touchstart', (e) => {
+      const t = e.changedTouches[0];
+      const rect = this.canvas.getBoundingClientRect();
+      const scaleX = CW / rect.width;
+      const scaleY = CH / rect.height;
+      const tx = (t.clientX - rect.left) * scaleX;
+      const ty = (t.clientY - rect.top) * scaleY;
+      this.mouse.x = tx;
+      this.mouse.y = ty;
+
+      audio.init();
+      if (this.gameState === 'PLAYING') {
+        if (this.checkSlotClick(tx, ty)) {
+          e.preventDefault();
+          return;
+        }
+        // 화면 임의 영역 탭 시 해당 위치로 즉시 발사!
+        this.player.useItem({ x: tx, y: ty }, this.boss);
+      } else {
+        this.handleFlowInput();
+      }
+    }, { passive: true });
+  }
+
+  updateJoystick(cx, cy, bx, by, maxR, knobElem) {
+    let dx = cx - bx;
+    let dy = cy - by;
+    const dist = Math.hypot(dx, dy);
+    if (dist > maxR) {
+      dx = (dx / dist) * maxR;
+      dy = (dy / dist) * maxR;
+    }
+    knobElem.style.transform = `translate(${dx}px, ${dy}px)`;
+    this.touchMoveX = dx / maxR;
+    this.touchMoveY = dy / maxR;
+    this.isMobileUsingJoystick = true;
+  }
+
+  handleFlowInput() {
+    audio.init();
+    if (this.gameState === 'START') {
+      this.startIntro();
+    } else if (this.gameState === 'GAMEOVER' && this.gameoverTimer >= 1.5) {
+      this.restartGame();
+    } else if (this.gameState === 'CLEAR' && this.clearTimer >= 1.5) {
+      this.gameState = 'START';
+      audio.stopBGM();
+    }
+  }
+
+  startIntro() {
+    this.gameState = 'BOSS_INTRO';
+    this.introTimer = 3.0;
+    this.boss.reset();
+    this.boss.hp = 0;
+    this.player.reset();
+    this.initEntities();
+    audio.playThud();
+  }
+
+  startGame() {
+    this.gameState = 'PLAYING';
+    this.boss.hp = 375;
+    audio.startBGM(1);
+  }
+
+  triggerGameOver() {
+    if (this.gameState !== 'PLAYING') return;
+    this.gameState = 'GAMEOVER';
+    this.gameoverTimer = 0;
+    audio.stopBGM();
+    audio.playDeath();
+    this.shakeScreen(0.85, 20);
+  }
+
+  triggerClear() {
+    if (this.gameState !== 'PLAYING') return;
+    this.gameState = 'CLEAR';
+    this.clearTimer = 0;
+    audio.stopBGM();
+    audio.playVictory();
+    this.shakeScreen(0.5, 10);
+  }
+
+  restartGame() {
+    this.startIntro();
+  }
+
+  shakeScreen(duration, magnitude) {
+    this.shakeDuration = duration;
+    this.shakeMagnitude = magnitude;
+  }
+
+  showBanner(text) {
+    this.phaseBanner.textContent = text;
+    this.phaseBanner.style.opacity = '1';
+    this.phaseBanner.style.transform = 'translate(-50%, -50%) scale(1.1)';
+    setTimeout(() => {
+      this.phaseBanner.style.opacity = '0';
+      this.phaseBanner.style.transform = 'translate(-50%, -50%) scale(0.9)';
+    }, 2000);
+  }
+
+  addText(text, x, y, color = '#ffeb3b', size = 20) {
+    this.texts.push(new FloatingText(text, x, y, color, size));
+  }
+
+  spawnRockDebris(x, y) {
+    for (let i = 0; i < 18; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const s = 60 + Math.random() * 240;
+      const color = Math.random() < 0.5 ? '#94a3b8' : '#475569';
+      this.particles.push(new Particle(x, y, Math.cos(a) * s, Math.sin(a) * s, color, 3 + Math.random() * 4, 0.75, 'rect'));
+    }
+  }
+
+  spawnChickenFeathers(x, y, type) {
+    for (let i = 0; i < 10; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const s = 40 + Math.random() * 180;
+      const color = type === 'white' ? '#f8fafc' : '#ef4444';
+      this.particles.push(new Particle(x, y, Math.cos(a) * s, Math.sin(a) * s, color, 3 + Math.random() * 3, 0.65, 'feather'));
+    }
+  }
+
+  update(dt) {
+    if (this.shakeDuration > 0) {
+      this.shakeDuration -= dt;
     }
 
-    // 보스 이름 표시
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 16px "Courier New", monospace';
-    ctx.textAlign = 'center';
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 3;
-    const bossLabel = cow.phase3Entered
-        ? '강력한 소 [3페이즈]'
-        : (cow.hp <= CONFIG.COW_PHASE2_HP ? '강력한 소 [2페이즈]' : '강력한 소');
-    ctx.strokeText(bossLabel, canvas.width / 2, y - 7);
-    ctx.fillText(bossLabel, canvas.width / 2, y - 7);
+    if (this.gameState === 'BOSS_INTRO') {
+      this.introTimer -= dt;
+      this.shakeScreen(0.1, 4.5);
+      const progress = 1 - (this.introTimer / 3.0);
+      this.boss.hp = 375 * V.clamp(progress, 0, 1);
+      if (this.introTimer <= 0) {
+        this.startGame();
+      }
+      return;
+    }
 
-    // 체력바 배경
+    if (this.gameState === 'GAMEOVER') {
+      this.gameoverTimer += dt;
+      return;
+    }
+
+    if (this.gameState === 'CLEAR') {
+      this.clearTimer += dt;
+      return;
+    }
+
+    if (this.gameState !== 'PLAYING') return;
+
+    this.player.update(dt, this.keys, this.mouse, this.boss, this.rocks);
+    this.boss.update(dt, this.player, this.rocks);
+
+    for (const rock of this.rocks) rock.update(dt);
+
+    for (let i = this.rockDrops.length - 1; i >= 0; i--) {
+      this.rockDrops[i].update(dt, this.player);
+      if (this.rockDrops[i].collected) {
+        this.rockDrops.splice(i, 1);
+      }
+    }
+
+    for (let i = this.ropeDrops.length - 1; i >= 0; i--) {
+      this.ropeDrops[i].update(dt, this.player);
+      if (this.ropeDrops[i].collected) {
+        this.ropeDrops.splice(i, 1);
+      }
+    }
+
+    if (this.ropeShot) {
+      this.ropeShot.update(dt, this.player);
+      const d = V.dist(this.ropeShot.x, this.ropeShot.y, this.boss.x, this.boss.y);
+      if (d < this.boss.radius + 15) {
+        this.player.startRopeGrapple(this.boss);
+        this.ropeShot = null;
+      } else if (!this.ropeShot.alive) {
+        this.ropeShot = null;
+      }
+    }
+
+    for (let i = this.projectiles.length - 1; i >= 0; i--) {
+      const p = this.projectiles[i];
+      p.update(dt);
+
+      let blockedByRock = false;
+      for (const rock of this.rocks) {
+        if (!rock.alive) continue;
+        if (V.dist(p.x, p.y, rock.x, rock.y) < p.radius + rock.radius) {
+          blockedByRock = true;
+          break;
+        }
+      }
+      if (blockedByRock) {
+        p.alive = false;
+        this.projectiles.splice(i, 1);
+        continue;
+      }
+
+      let hitChicken = false;
+      for (let j = this.chickens.length - 1; j >= 0; j--) {
+        const c = this.chickens[j];
+        if (V.dist(p.x, p.y, c.x, c.y) < p.radius + c.radius) {
+          hitChicken = true;
+          this.spawnChickenFeathers(c.x, c.y, c.type);
+          this.chickens.splice(j, 1);
+          audio.playTtachi();
+          this.addText('떼치!', c.x, c.y - 15, '#ffca28', 18);
+          break;
+        }
+      }
+      if (hitChicken) {
+        p.alive = false;
+        this.projectiles.splice(i, 1);
+        continue;
+      }
+
+      const distToBoss = V.dist(p.x, p.y, this.boss.x, this.boss.y);
+      if (distToBoss < p.radius + this.boss.radius) {
+        if (p instanceof RockProjectile) {
+          this.boss.takeDamage(25);
+        } else if (p instanceof SlingshotProjectile) {
+          this.boss.takeDamage(25 / 3);
+        }
+        p.alive = false;
+        this.projectiles.splice(i, 1);
+        continue;
+      }
+
+      if (!p.alive) {
+        this.projectiles.splice(i, 1);
+      }
+    }
+
+    for (let i = this.chickens.length - 1; i >= 0; i--) {
+      const c = this.chickens[i];
+      c.update(dt, this.rocks);
+
+      const d = V.dist(c.x, c.y, this.player.x, this.player.y);
+      if (d < c.radius + this.player.radius) {
+        this.spawnChickenFeathers(c.x, c.y, c.type);
+        this.chickens.splice(i, 1);
+        this.player.stun(0.75);
+        audio.playCrash(false);
+        this.addText('기절!', this.player.x, this.player.y - 25, '#ffee58');
+      }
+    }
+
+    for (let i = this.shockwaves.length - 1; i >= 0; i--) {
+      this.shockwaves[i].update(dt, this.player);
+      if (!this.shockwaves[i].alive) {
+        this.shockwaves.splice(i, 1);
+      }
+    }
+
+    for (let i = this.dustClouds.length - 1; i >= 0; i--) {
+      this.dustClouds[i].update(dt);
+      if (this.dustClouds[i].lifetime <= 0) {
+        this.dustClouds.splice(i, 1);
+      }
+    }
+
+    for (let i = this.particles.length - 1; i >= 0; i--) {
+      this.particles[i].update(dt);
+      if (this.particles[i].lifetime <= 0) {
+        this.particles.splice(i, 1);
+      }
+    }
+
+    for (let i = this.texts.length - 1; i >= 0; i--) {
+      this.texts[i].update(dt);
+      if (this.texts[i].lifetime <= 0) {
+        this.texts.splice(i, 1);
+      }
+    }
+
+    const distToPlayer = V.dist(this.boss.x, this.boss.y, this.player.x, this.player.y);
+    if (distToPlayer < this.boss.radius + this.player.radius) {
+      if (!this.boss.isSafeContact && !this.player.isRopeGrappled) {
+        this.triggerGameOver();
+      }
+    }
+  }
+
+  draw() {
+    const ctx = this.ctx;
+    ctx.save();
+
+    if (this.shakeDuration > 0) {
+      const sx = (Math.random() - 0.5) * this.shakeMagnitude * 2;
+      const sy = (Math.random() - 0.5) * this.shakeMagnitude * 2;
+      ctx.translate(sx, sy);
+    }
+
+    ctx.fillStyle = '#4a752c';
+    ctx.fillRect(0, 0, CW, CH);
+
+    ctx.strokeStyle = '#436a28';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < CW; x += 50) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, CH);
+      ctx.stroke();
+    }
+    for (let y = 0; y < CH; y += 50) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(CW, y);
+      ctx.stroke();
+    }
+
+    ctx.strokeStyle = '#2d481b';
+    ctx.lineWidth = 10;
+    ctx.strokeRect(5, 5, CW - 10, CH - 10);
+
+    for (const rock of this.rocks) rock.draw(ctx);
+    for (const drop of this.rockDrops) drop.draw(ctx);
+    for (const drop of this.ropeDrops) drop.draw(ctx);
+    for (const chicken of this.chickens) chicken.draw(ctx);
+    for (const p of this.projectiles) p.draw(ctx);
+    if (this.ropeShot) this.ropeShot.draw(ctx);
+    for (const sw of this.shockwaves) sw.draw(ctx);
+
+    this.player.draw(ctx, this.boss);
+    this.boss.draw(ctx);
+
+    for (const pt of this.particles) pt.draw(ctx);
+
+    for (const dust of this.dustClouds) dust.draw(ctx);
+
+    for (const txt of this.texts) txt.draw(ctx);
+
+    ctx.restore();
+
+    this.drawHUD(ctx);
+    this.drawOverlays(ctx);
+  }
+
+  drawHUD(ctx) {
+    if (this.gameState !== 'PLAYING' && this.gameState !== 'BOSS_INTRO') return;
+
+    // 상단 보스 체력바
+    const barWidth = 620;
+    const barHeight = 22;
+    const barX = (CW - barWidth) / 2;
+    const barY = 28;
+
+    ctx.save();
     ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-    ctx.beginPath();
-    ctx.roundRect(x - 3, y - 3, barWidth + 6, barHeight + 6, 8);
-    ctx.fill();
+    ctx.fillRect(barX - 4, barY - 4, barWidth + 8, barHeight + 8);
+    ctx.strokeStyle = '#e0e0e0';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(barX - 4, barY - 4, barWidth + 8, barHeight + 8);
 
-    // 체력 게이지
-    ctx.fillStyle = cow.phase3Entered ? '#ab47bc' : '#d32f2f';
-    if (ratio > 0) {
+    const hpRatio = V.clamp(this.boss.hp / this.boss.maxHp, 0, 1);
+    ctx.fillStyle = this.boss.phase === 3 ? '#9c27b0' : '#d32f2f';
+    ctx.fillRect(barX, barY, barWidth * hpRatio, barHeight);
+
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 15px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.shadowColor = 'black';
+    ctx.shadowBlur = 4;
+    const phaseLabel = this.boss.phase === 1 ? '' : ` [${this.boss.phase}페이즈]`;
+    ctx.fillText(`강력한 소${phaseLabel}`, barX, barY - 8);
+
+    ctx.textAlign = 'right';
+    ctx.fillText(`${Math.ceil(this.boss.hp)} / ${this.boss.maxHp}`, barX + barWidth, barY - 8);
+    ctx.restore();
+
+    // 하단 인벤토리 슬롯 UI (터치 전환 가능)
+    const slotCount = 4;
+    const slotSize = 56;
+    const gap = 12;
+    const totalW = slotCount * slotSize + (slotCount - 1) * gap;
+    const startX = (CW - totalW) / 2;
+    const startY = CH - slotSize - 20;
+
+    for (let i = 0; i < slotCount; i++) {
+      const sx = startX + i * (slotSize + gap);
+      const sy = startY;
+      const item = this.player.slots[i];
+      const isSelected = this.player.selectedSlot === i;
+
+      ctx.save();
+      ctx.fillStyle = isSelected ? 'rgba(30, 35, 45, 0.92)' : 'rgba(15, 20, 25, 0.78)';
+      ctx.fillRect(sx, sy, slotSize, slotSize);
+
+      ctx.lineWidth = isSelected ? 3.5 : 1.5;
+      ctx.strokeStyle = isSelected ? '#ffd700' : 'rgba(255, 255, 255, 0.3)';
+      ctx.strokeRect(sx, sy, slotSize, slotSize);
+
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(`${i + 1}`, sx + 5, sy + 14);
+
+      if (item === 'rock') {
         ctx.beginPath();
-        ctx.roundRect(x, y, barWidth * ratio, barHeight, 6);
+        ctx.arc(sx + slotSize / 2, sy + slotSize / 2, 14, 0, Math.PI * 2);
+        ctx.fillStyle = '#90a4ae';
         ctx.fill();
-    }
-}
-
-function drawInventory() {
-    const slotWidth = 58;
-    const slotHeight = 58;
-    const gap = 10;
-    const totalWidth = slotWidth * 4 + gap * 3;
-    const startX = (canvas.width - totalWidth) / 2;
-    const y = canvas.height - slotHeight - 16;
-
-    for (let i = 0; i < 4; i++) {
-        const slotX = startX + i * (slotWidth + gap);
-        const isSelected = (i === selectedSlot);
-
-        ctx.fillStyle = 'rgba(20, 20, 20, 0.72)';
-        ctx.beginPath();
-        ctx.roundRect(slotX, y, slotWidth, slotHeight, 8);
-        ctx.fill();
-
-        ctx.strokeStyle = isSelected ? '#ffd54f' : 'rgba(255, 255, 255, 0.4)';
-        ctx.lineWidth = isSelected ? 3.5 : 1.5;
+        ctx.strokeStyle = '#cfd8dc';
+        ctx.lineWidth = 1.5;
         ctx.stroke();
 
-        // 슬롯 번호
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
-        ctx.font = 'bold 12px "Courier New", monospace';
-        ctx.textAlign = 'left';
-        ctx.fillText(String(i + 1), slotX + 6, y + 15);
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 15px sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText(`${this.player.rockCount}`, sx + slotSize - 6, sy + slotSize - 6);
+      } else if (item === 'rope') {
+        ctx.beginPath();
+        ctx.arc(sx + slotSize / 2, sy + slotSize / 2, 13, 0, Math.PI * 1.6);
+        ctx.strokeStyle = '#ff9800';
+        ctx.lineWidth = 3.5;
+        ctx.stroke();
 
-        if (inventory[i] === 'stone') {
-            ctx.fillStyle = '#555555';
-            ctx.beginPath();
-            ctx.arc(slotX + slotWidth / 2, y + slotHeight / 2, 14, 0, Math.PI * 2);
-            ctx.fill();
-        } else if (inventory[i] === 'rope') {
-            const cx = slotX + slotWidth / 2;
-            const cy = y + slotHeight / 2;
-            ctx.strokeStyle = '#c68b59';
-            ctx.lineWidth = 4;
-            ctx.beginPath();
-            ctx.ellipse(cx, cy, 14, 9, -0.3, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.strokeStyle = '#e6c29f';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.ellipse(cx, cy, 8, 5, -0.3, 0, Math.PI * 2);
-            ctx.stroke();
-        } else if (inventory[i] === 'slingshot') {
-            const cx = slotX + slotWidth / 2;
-            const cy = y + slotHeight / 2;
-            ctx.strokeStyle = '#a1662f';
-            ctx.lineWidth = 4.5;
-            ctx.lineCap = 'round';
-            ctx.beginPath();
-            ctx.moveTo(cx, cy + 16);
-            ctx.lineTo(cx, cy + 2);
-            ctx.lineTo(cx - 11, cy - 12);
-            ctx.moveTo(cx, cy + 2);
-            ctx.lineTo(cx + 11, cy - 12);
-            ctx.stroke();
+        ctx.fillStyle = '#ffb74d';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('밧줄', sx + slotSize / 2, sy + slotSize - 8);
 
-            ctx.strokeStyle = '#ffeb3b';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(cx - 11, cy - 12);
-            ctx.lineTo(cx + 11, cy - 12);
-            ctx.stroke();
-
-            // 새총 0.5초 쿨타임 오버레이
-            const slingRemain = slingshotCooldownEnd - Date.now();
-            if (slingRemain > 0) {
-                const ratio = Math.min(1, slingRemain / CONFIG.SLINGSHOT_COOLDOWN);
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
-                ctx.fillRect(slotX, y + slotHeight * (1 - ratio), slotWidth, slotHeight * ratio);
-            }
+        if (this.player.ropeCdTimer > 0) {
+          const pct = this.player.ropeCdTimer / 0.5;
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+          ctx.fillRect(sx, sy + slotSize * (1 - pct), slotSize, slotSize * pct);
         }
+      } else if (item === 'slingshot') {
+        ctx.strokeStyle = '#8d6e63';
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.moveTo(sx + slotSize / 2, sy + slotSize - 12);
+        ctx.lineTo(sx + slotSize / 2, sy + slotSize / 2);
+        ctx.lineTo(sx + slotSize / 2 - 10, sy + 18);
+        ctx.moveTo(sx + slotSize / 2, sy + slotSize / 2);
+        ctx.lineTo(sx + slotSize / 2 + 10, sy + 18);
+        ctx.stroke();
+
+        ctx.fillStyle = '#e57373';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('새총', sx + slotSize / 2, sy + slotSize - 6);
+
+        if (this.player.slingCdTimer > 0) {
+          const pct = this.player.slingCdTimer / 0.5;
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+          ctx.fillRect(sx, sy + slotSize * (1 - pct), slotSize, slotSize * pct);
+        }
+      }
+
+      ctx.restore();
     }
+  }
+
+  drawOverlays(ctx) {
+    if (this.gameState === 'START') {
+      ctx.save();
+      ctx.fillStyle = 'rgba(5, 7, 10, 0.95)';
+      ctx.fillRect(0, 0, CW, CH);
+
+      ctx.textAlign = 'center';
+      ctx.shadowColor = '#ffd54f';
+      ctx.shadowBlur = 24;
+      ctx.fillStyle = '#fff8e1';
+      ctx.font = '900 80px sans-serif';
+      ctx.fillText('TTACHI', CW / 2, CH / 2 - 40);
+
+      const starPulse = Math.sin(Date.now() / 250) * 4;
+      ctx.font = '28px sans-serif';
+      ctx.fillStyle = '#ffe082';
+      ctx.fillText('✦', CW / 2 - 200 - starPulse, CH / 2 - 50);
+      ctx.fillText('✦', CW / 2 + 200 + starPulse, CH / 2 - 50);
+
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#e0e0e0';
+      ctx.font = '20px sans-serif';
+      ctx.fillText('오리가 되어서 세상을 구하는 게임', CW / 2, CH / 2 + 20);
+
+      const alpha = 0.5 + Math.sin(Date.now() / 300) * 0.5;
+      ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillText('화면을 터치하거나 클릭하여 시작', CW / 2, CH / 2 + 100);
+
+      ctx.fillStyle = '#9e9e9e';
+      ctx.font = '14px sans-serif';
+      ctx.fillText('모바일: 좌측 조이스틱 이동 | 우측 대쉬 & 사용 버튼  /  PC: WASD | Shift | 마우스', CW / 2, CH - 40);
+
+      ctx.restore();
+    }
+    else if (this.gameState === 'GAMEOVER') {
+      ctx.save();
+      const alpha = Math.min(0.88, (this.gameoverTimer / 1.5) * 0.88);
+      ctx.fillStyle = `rgba(15, 0, 0, ${alpha})`;
+      ctx.fillRect(0, 0, CW, CH);
+
+      const textAlpha = Math.min(1.0, this.gameoverTimer / 1.2);
+      ctx.textAlign = 'center';
+      ctx.shadowColor = '#d32f2f';
+      ctx.shadowBlur = 30;
+      ctx.fillStyle = `rgba(229, 57, 53, ${textAlpha})`;
+      ctx.font = '900 64px "Times New Roman", "Malgun Gothic", serif';
+      ctx.fillText('죽었습니다', CW / 2, CH / 2 - 10);
+
+      if (this.gameoverTimer >= 1.5) {
+        ctx.shadowBlur = 0;
+        const subAlpha = 0.5 + Math.sin(Date.now() / 200) * 0.5;
+        ctx.fillStyle = `rgba(255, 255, 255, ${subAlpha})`;
+        ctx.font = 'bold 18px sans-serif';
+        ctx.fillText('화면을 터치하거나 클릭하여 재도전', CW / 2, CH / 2 + 70);
+      }
+      ctx.restore();
+    }
+    else if (this.gameState === 'CLEAR') {
+      ctx.save();
+      const alpha = Math.min(0.85, (this.clearTimer / 1.5) * 0.85);
+      ctx.fillStyle = `rgba(10, 15, 5, ${alpha})`;
+      ctx.fillRect(0, 0, CW, CH);
+
+      const textAlpha = Math.min(1.0, this.clearTimer / 1.2);
+      ctx.textAlign = 'center';
+      ctx.shadowColor = '#ffd700';
+      ctx.shadowBlur = 35;
+      ctx.fillStyle = `rgba(255, 215, 0, ${textAlpha})`;
+      ctx.font = '900 64px "Times New Roman", "Malgun Gothic", serif';
+      ctx.fillText('스테이지 클리어', CW / 2, CH / 2 - 10);
+
+      if (this.clearTimer >= 1.5) {
+        ctx.shadowBlur = 0;
+        const subAlpha = 0.5 + Math.sin(Date.now() / 200) * 0.5;
+        ctx.fillStyle = `rgba(255, 255, 255, ${subAlpha})`;
+        ctx.font = 'bold 18px sans-serif';
+        ctx.fillText('화면을 터치하거나 클릭하여 타이틀 복귀', CW / 2, CH / 2 + 70);
+      }
+      ctx.restore();
+    }
+  }
+
+  loop(currentTime) {
+    const dt = Math.min(0.1, (currentTime - this.lastTime) / 1000);
+    this.lastTime = currentTime;
+
+    this.update(dt);
+    this.draw();
+
+    requestAnimationFrame((t) => this.loop(t));
+  }
+
+  start() {
+    requestAnimationFrame((t) => {
+      this.lastTime = t;
+      this.loop(t);
+    });
+  }
 }
 
-// ==========================================
-// 9. 게임 종료 처리
-// ==========================================
-function triggerGameOver() {
-    gameState = 'GAMEOVER';
-    stateTimer = Date.now() + 1500;
+const game = new Game();
+game.start();
 
-    resultTitle.className = 'ds-title ds-died';
-    resultTitle.textContent = '죽었습니다';
-    resultPrompt.textContent = '[ 아무 버튼이나 누르거나 클릭해서 다시 시작하기 ]';
-
-    resultPromptWrapper.classList.remove('fade-in-delayed');
-    void resultPromptWrapper.offsetWidth;
-    resultPromptWrapper.classList.add('fade-in-delayed');
-
-    resultScreen.classList.remove('hidden');
-}
-
-function triggerGameClear() {
-    gameState = 'CLEAR';
-    stateTimer = Date.now() + 1500;
-
-    resultTitle.className = 'ds-title ds-cleared';
-    resultTitle.textContent = '스테이지 클리어';
-    resultPrompt.textContent = '[ 아무 버튼이나 누르거나 클릭해서 메인으로 ]';
-
-    resultPromptWrapper.classList.remove('fade-in-delayed');
-    void resultPromptWrapper.offsetWidth;
-    resultPromptWrapper.classList.add('fade-in-delayed');
-
-    resultScreen.classList.remove('hidden');
-}
-
-// ==========================================
-// 10. 메인 루프
-// ==========================================
-function gameLoop() {
-    update();
-    draw();
-    requestAnimationFrame(gameLoop);
-}
-
-window.onload = function() {
-    gameLoop();
-};
 </script>
 </body>
 </html>
